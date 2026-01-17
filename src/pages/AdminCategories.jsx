@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { Link } from "react-router-dom";
+import BackButton from "../components/BackButton";
 
 export default function AdminCategories() {
   const [categories, setCategories] = useState([]);
@@ -7,12 +9,11 @@ export default function AdminCategories() {
   const [error, setError] = useState("");
 
   async function load() {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("categories")
       .select("*")
       .order("sort_order", { ascending: true });
 
-    if (error) console.error(error);
     setCategories(data || []);
   }
 
@@ -30,19 +31,12 @@ export default function AdminCategories() {
   }
 
   async function updateCategory(id, name) {
-    const { error } = await supabase
-      .from("categories")
-      .update({ name })
-      .eq("id", id);
-
-    if (error) setError(error.message);
+    await supabase.from("categories").update({ name }).eq("id", id);
     load();
   }
 
   async function deleteCategory(id) {
-    const { error } = await supabase.from("categories").delete().eq("id", id);
-
-    if (error) setError(error.message);
+    await supabase.from("categories").delete().eq("id", id);
     load();
   }
 
@@ -51,14 +45,14 @@ export default function AdminCategories() {
   }, []);
 
   return (
-    <div className="p-4 max-w-lg mx-auto space-y-6">
+    <div className="p-4 space-y-6 max-w-lg mx-auto">
+      <BackButton />
       <h1 className="text-xl font-bold">Categories</h1>
 
-      {/* Add form */}
       <form onSubmit={addCategory} className="flex gap-2">
         <input
           className="border p-2 flex-1"
-          placeholder="New Category Name"
+          placeholder="New category name"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
         />
@@ -67,7 +61,6 @@ export default function AdminCategories() {
 
       {error && <p className="text-red-600">{error}</p>}
 
-      {/* List */}
       <ul className="space-y-2">
         {categories.map((cat) => (
           <li key={cat.id} className="flex items-center gap-2">
@@ -76,6 +69,12 @@ export default function AdminCategories() {
               defaultValue={cat.name}
               onBlur={(e) => updateCategory(cat.id, e.target.value)}
             />
+            <Link
+              to={`/admin/categories/${cat.id}/subcategories`}
+              className="underline text-blue-600 text-sm"
+            >
+              Manage Subcategories
+            </Link>
             <button
               className="text-red-600"
               onClick={() => deleteCategory(cat.id)}
