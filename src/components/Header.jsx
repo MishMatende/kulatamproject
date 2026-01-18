@@ -14,7 +14,11 @@ export default function Header() {
       <div className="max-w-6xl mx-auto flex items-center justify-between px-4 py-3">
         {/* Left Logo + Title */}
         <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="Logo" className="h-8 w-8 object-contain" />
+          <img
+            src="/kulatam-logo.svg"
+            alt="Logo"
+            className="h-8 w-8 object-contain"
+          />
           <h1
             className="text-lg font-semibold"
             style={{ color: "var(--brand-text-light)" }}
@@ -26,21 +30,21 @@ export default function Header() {
         {/* Categories Row */}
         <nav className="hidden md:flex gap-6">
           <Link
-            className="text-sm hover:underline"
+            className="text-lg"
             style={{ color: "var(--brand-text-light)" }}
             to="/"
           >
             Menu
           </Link>
           <Link
-            className="text-sm hover:underline"
+            className="text-lg"
             style={{ color: "var(--brand-text-light)" }}
             to="/"
           >
             About
           </Link>
           <Link
-            className="text-sm hover:underline"
+            className="text-lg"
             style={{ color: "var(--brand-text-light)" }}
             to="/"
           >
