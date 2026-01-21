@@ -28,7 +28,12 @@ export default function PublicHome() {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold mb-6 text-center">Our Menu</h1>
+      <h1
+        className="text-2xl font-bold mb-6 text-center"
+        style={{ color: "var(--brand-primary)" }}
+      >
+        Our Menu
+      </h1>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {categories.map((cat) => {

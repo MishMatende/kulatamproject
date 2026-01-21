@@ -19,7 +19,12 @@ export default function PublicMenu() {
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Menu</h1>
+      <h1
+        className="text-3xl font-bold mb-6"
+        style={{ color: "var(--brand-primary)" }}
+      >
+        Menu
+      </h1>
 
       {data.map((cat) => (
         <div key={cat.id} className="mb-8">

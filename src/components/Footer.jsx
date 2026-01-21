@@ -4,11 +4,11 @@ import { FaTiktok } from "react-icons/fa";
 export default function Footer() {
   return (
     <footer
-      className="mt-12"
-      style={{ backgroundColor: "var(--brand-bg-light)" }}
+      className="w-full shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.1)]"
+      // style={{ backgroundColor: "var(--brand-bg-light)" }}
     >
       <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col items-center gap-4 text-center">
-        <p style={{ color: "var(--brand-text-muted)" }} className="text-sm">
+        <p style={{ color: "var(--brand-bg-dark)" }} className="text-sm">
           © {new Date().getFullYear()} KT Cafe. All rights reserved.
         </p>
 

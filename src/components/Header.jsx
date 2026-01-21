@@ -5,11 +5,11 @@ import { FaTiktok } from "react-icons/fa";
 export default function Header() {
   return (
     <header
-      className="w-full border-b"
-      style={{
-        backgroundColor: "var(--brand-bg-dark)",
-        borderColor: "var(--brand-border)",
-      }}
+      className="w-full shadow-lg"
+      // style={{
+      //   backgroundColor: "var(--brand-bg-dark)",
+      //   borderColor: "var(--brand-border)",
+      // }}
     >
       <div className="max-w-6xl mx-auto flex items-center justify-between px-4 py-3">
         {/* Left Logo + Title */}
@@ -17,11 +17,11 @@ export default function Header() {
           <img
             src="/kulatam-logo.svg"
             alt="Logo"
-            className="h-8 w-8 object-contain"
+            className="h-18 w-18 object-contain"
           />
           <h1
-            className="text-lg font-semibold"
-            style={{ color: "var(--brand-text-light)" }}
+            className="text-2xl font-semibold"
+            style={{ color: "var(--brand-bg-dark)" }}
           >
             KT CAFE
           </h1>
