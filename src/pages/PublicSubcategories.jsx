@@ -81,7 +81,7 @@ export default function PublicSubcategories() {
       </h1>
 
       <motion.div
-        className="grid grid-cols-1 md:grid-cols-3 gap-6"
+        className="grid grid-cols-1 md:grid-cols-2 gap-6"
         variants={containerVariants}
         initial="hidden"
         animate="show"
