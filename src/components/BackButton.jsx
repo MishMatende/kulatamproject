@@ -6,7 +6,7 @@ function BackButton() {
     <button
       onClick={() => navigate(-1)}
       className="
-        text-brand font-semibold text-sm brand-primary cursor-pointer
+        text-brand font-semibold text-lg brand-primary cursor-pointer
       "
     >
       ← Back

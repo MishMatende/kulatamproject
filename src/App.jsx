@@ -9,8 +9,26 @@ import PublicHome from "./pages/PublicHome";
 import PublicSubcategories from "./pages/PublicSubcategories";
 import PublicItems from "./pages/PublicItems";
 import PublicLayout from "./layouts/PublicLayouts";
+import { useEffect, useState } from "react";
+import LoadingScreen from "./components/LoadingScreen";
 
 export default function App() {
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const img = new Image();
+    img.src = "/kulatam-logo.svg";
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 2000);
+    return () => clearTimeout(t);
+  }, []);
+
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
   return (
     <Routes>
       <Route element={<PublicLayout />}>

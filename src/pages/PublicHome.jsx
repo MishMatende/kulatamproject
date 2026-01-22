@@ -7,11 +7,42 @@ export default function PublicHome() {
   const [categories, setCategories] = useState([]);
   const navigate = useNavigate();
 
-  const categoryIcons = {
-    "Breakfast & Morning Plates": "🥞",
-    Lunch: "🍝",
-    Meat: "🥩",
-    Drinks: "🥤",
+  // MAPPINGS — remove trailing space!
+  const categoryImages = {
+    "Breakfast & Morning Plates": "/category-images/Breakfast.jpeg",
+    Lunch: "/category-images/Lunch.jpeg",
+    Meat: "/category-images/Meat.jpeg",
+    Drinks: "/category-images/Drinks.jpeg",
+  };
+
+  // Detect mobile (simple width check)
+  const isMobile = window.innerWidth <= 768;
+
+  const containerVariants = {
+    show: {
+      transition: {
+        staggerChildren: 0.2,
+      },
+    },
+  };
+
+  // Desktop = fade
+  const itemVariantsDesktop = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { duration: 0.4, ease: "easeOut" },
+    },
+  };
+
+  // Mobile = slide up + fade
+  const itemVariantsMobile = {
+    hidden: { opacity: 0, y: 30 },
+    show: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.4, ease: "easeOut" },
+    },
   };
 
   useEffect(() => {
@@ -35,32 +66,40 @@ export default function PublicHome() {
         Our Menu
       </h1>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <motion.div
+        className="grid grid-cols-1 md:grid-cols-3 gap-6"
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+      >
         {categories.map((cat) => {
-          const icon = categoryIcons[cat.name] || "🍽️";
+          // Handle bad names or missing images
+          const normalizedName = cat.name.trim();
+          const image =
+            categoryImages[normalizedName] || "/category-images/default.jpeg";
+
           return (
             <motion.div
               key={cat.id}
+              variants={isMobile ? itemVariantsMobile : itemVariantsDesktop}
               onClick={() => navigate(`/menu/${cat.id}`)}
+              className="rounded-xl shadow relative cursor-pointer bg-cover bg-center bg-no-repeat"
+              style={{
+                backgroundImage: `url(${image})`,
+                height: "140px",
+              }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="
-              rounded-xl shadow-md p-6 flex flex-col items-center card justify-center
-              text-center cursor-pointer bg-white border hover:bg-gray-50 transition
-            "
             >
-              <div className="text-4xl mb-2">{icon}</div>
-              <div className="font-semibold text-lg">{cat.name}</div>
+              <div className="absolute inset-0 bg-black/40 rounded-xl flex items-center justify-center">
+                <span className="text-white font-bold text-xl text-center px-2">
+                  {cat.name}
+                </span>
+              </div>
             </motion.div>
           );
         })}
-      </div>
+      </motion.div>
     </div>
   );
 }
-
-// style={{
-//   backgroundImage: `url(${cat.image_url})`,
-//   backgroundSize: "cover",
-//   backgroundPosition: "center"
-// }}

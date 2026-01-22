@@ -10,6 +10,45 @@ export default function PublicSubcategories() {
   const [subcategories, setSubcategories] = useState([]);
   const navigate = useNavigate();
 
+  // Subcategory image mapping
+  const subcategoryImages = {
+    "Pasta & Loaded Fries": "/subcategory-images/Pasta.jpeg",
+    "Chicken Signatures": "/subcategory-images/Chicken.jpeg",
+    "Beef Classics": "/subcategory-images/Beef.jpeg",
+    "Goat Specials": "/subcategory-images/Goat.jpeg",
+    Coffee: "/subcategory-images/Coffee.jpeg",
+    "Tea & Infusions": "/subcategory-images/Tea.jpeg",
+    "Fresh Juices & Mocktails": "/subcategory-images/Juices.jpeg",
+  };
+
+  // Detect mobile
+  const isMobile = window.innerWidth <= 768;
+
+  const containerVariants = {
+    show: {
+      transition: {
+        staggerChildren: 0.2,
+      },
+    },
+  };
+
+  const itemVariantsDesktop = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { duration: 0.4, ease: "easeOut" },
+    },
+  };
+
+  const itemVariantsMobile = {
+    hidden: { opacity: 0, y: 30 },
+    show: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.4, ease: "easeOut" },
+    },
+  };
+
   useEffect(() => {
     async function load() {
       const { data: cat } = await supabase
@@ -27,30 +66,54 @@ export default function PublicSubcategories() {
       setCategory(cat);
       setSubcategories(subs || []);
     }
+
     load();
   }, [categoryId]);
 
   return (
     <div className="p-6 space-y-4">
       <BackButton />
-      <h1 className="text-2xl font-bold text-center">{category?.name}</h1>
+      <h1
+        className="text-2xl font-bold text-center"
+        style={{ color: "var(--brand-primary)" }}
+      >
+        {category?.name}
+      </h1>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        {subcategories.map((sub) => (
-          <motion.div
-            key={sub.id}
-            onClick={() => navigate(`/menu/${categoryId}/${sub.id}`)}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            className="
-            rounded-xl shadow p-6 text-center
-            cursor-pointer bg-white border hover:bg-gray-50 transition
-          "
-          >
-            <div className="font-medium text-lg">{sub.name}</div>
-          </motion.div>
-        ))}
-      </div>
+      <motion.div
+        className="grid grid-cols-1 md:grid-cols-3 gap-6"
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+      >
+        {subcategories.map((sub) => {
+          const normalizedName = sub.name.trim();
+          const image =
+            subcategoryImages[normalizedName] ||
+            "/subcategory-images/default.jpeg";
+
+          return (
+            <motion.div
+              key={sub.id}
+              variants={isMobile ? itemVariantsMobile : itemVariantsDesktop}
+              onClick={() => navigate(`/menu/${categoryId}/${sub.id}`)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="rounded-xl shadow relative cursor-pointer bg-cover bg-center bg-no-repeat"
+              style={{
+                backgroundImage: `url(${image})`,
+                height: "140px",
+              }}
+            >
+              <div className="absolute inset-0 bg-black/40 rounded-xl flex items-center justify-center">
+                <span className="text-white font-bold text-lg text-center px-2">
+                  {sub.name}
+                </span>
+              </div>
+            </motion.div>
+          );
+        })}
+      </motion.div>
     </div>
   );
 }
