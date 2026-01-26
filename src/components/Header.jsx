@@ -20,7 +20,7 @@ export default function Header() {
             className="h-18 w-18 object-contain"
           />
           <h1
-            className="text-2xl font-semibold"
+            className="text-3xl font-semibold"
             style={{ color: "var(--brand-bg-dark)" }}
           >
             KT CAFE

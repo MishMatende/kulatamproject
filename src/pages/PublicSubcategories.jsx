@@ -12,13 +12,22 @@ export default function PublicSubcategories() {
 
   // Subcategory image mapping
   const subcategoryImages = {
-    "Pasta & Loaded Fries": "/subcategory-images/Pasta.jpeg",
-    "Chicken Signatures": "/subcategory-images/Chicken.jpeg",
-    "Beef Classics": "/subcategory-images/Beef.jpeg",
-    "Goat Specials": "/subcategory-images/Goat.jpeg",
+    Smoothies: "/subcategory-images/Smoothies.jpeg",
+    Mocktails: "/subcategory-images/Mocktails.jpeg",
+    "Bakery & Pastries": "/subcategory-images/Bakery.jpeg",
     Coffee: "/subcategory-images/Coffee.jpeg",
+    "Fresh Juices": "/subcategory-images/Juices.jpeg",
+    "Chicken Signatures": "/subcategory-images/Chicken.jpeg",
+    Milkshakes: "/subcategory-images/Milkshakes.jpeg",
     "Tea & Infusions": "/subcategory-images/Tea.jpeg",
-    "Fresh Juices & Mocktails": "/subcategory-images/Juices.jpeg",
+    Sandwiches: "/subcategory-images/Sandwiches.jpeg",
+    "Loaded fries": "/subcategory-images/LoadedFries.jpeg",
+    Breakfast: "/subcategory-images/Breakfast.jpeg",
+    Wraps: "/subcategory-images/Wraps.jpeg",
+    "Goat Specials": "/subcategory-images/Goat.jpeg",
+    Pasta: "/subcategory-images/Pasta.jpeg",
+    "Swahili & Local Favorites": "/subcategory-images/Swahili.jpeg",
+    "Beef Classics": "/subcategory-images/Beef.jpeg",
   };
 
   // Detect mobile

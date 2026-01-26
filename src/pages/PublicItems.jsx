@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useParams } from "react-router-dom";
 import MenuItemRow from "../components/MenuItemRow";
-import Breadcrumbs from "../components/Breadcrumbs";
+import BackButton from "../components/BackButton";
 
 export default function PublicItems() {
   const { subcategoryId } = useParams();
@@ -12,7 +12,6 @@ export default function PublicItems() {
 
   useEffect(() => {
     async function load() {
-      // Fetch subcategory
       const { data: sub } = await supabase
         .from("subcategories")
         .select("*")
@@ -21,7 +20,6 @@ export default function PublicItems() {
 
       setSubcategory(sub);
 
-      // Fetch category of that subcategory
       const { data: cat } = await supabase
         .from("categories")
         .select("*")
@@ -30,7 +28,6 @@ export default function PublicItems() {
 
       setCategory(cat);
 
-      // Fetch items in that subcategory
       const { data: its } = await supabase
         .from("menu_items")
         .select("*")
@@ -39,8 +36,8 @@ export default function PublicItems() {
 
       setItems(
         (its || []).sort(
-          (a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999)
-        )
+          (a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999),
+        ),
       );
     }
 
@@ -48,39 +45,51 @@ export default function PublicItems() {
   }, [subcategoryId]);
 
   const hasVariants = items.some(
-    (i) => i.variants && Object.keys(i.variants).length > 0
+    (i) => i.variants && Object.keys(i.variants).length > 0,
   );
   const hasTriple = items.some((i) => i.variants?.Triple !== undefined);
 
   return (
-    <div className="p-6 space-y-4">
-      <Breadcrumbs
-        categoryName={category?.name}
-        subcategoryName={subcategory?.name}
-      />
+    <div className="p-4 md:p-6 max-w-3xl mx-auto">
+      <BackButton />
 
-      <h1 className="text-2xl font-bold text-center">{subcategory?.name}</h1>
+      {/* Heading */}
+      <h1
+        className="text-2xl font-semibold text-center mt-2 mb-4"
+        style={{ color: "var(--brand-primary)" }}
+      >
+        {subcategory?.name}
+      </h1>
 
-      {/* MAIN HEADER */}
-      <div className="flex justify-between font-semibold text-sm border-b border-gray-300 pb-1 brand-border brand-dark">
-        <span>Name</span>
-        <span>Price</span>
-      </div>
-
-      {/* VARIANT HEADER ROW */}
-      {hasVariants && (
-        <div className="flex justify-end gap-6 text-xs text-gray-500 border-b border-gray-200 pb-1">
-          <span>Single</span>
-          <span>Double</span>
-          {hasTriple && <span>Triple</span>}
+      {/* CARD */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        {/* HEADER */}
+        <div className="flex justify-between text-sm font-semibold pb-2 border-b border-gray-200">
+          <span>Name</span>
+          <span>Price</span>
         </div>
-      )}
 
-      {/* ITEMS */}
-      <div>
-        {items.map((item) => (
-          <MenuItemRow key={item.id} item={item} hasTriple={hasTriple} />
-        ))}
+        {/* VARIANT LABEL ROW */}
+        {hasVariants && (
+          <div className="flex justify-end gap-6 text-xs text-gray-500 py-1 border-b border-gray-100">
+            <span>Single</span>
+            <span>Double</span>
+            {hasTriple && <span>Triple</span>}
+          </div>
+        )}
+
+        {/* ITEMS */}
+        <div className="divide-y divide-gray-200">
+          {items.length > 0 ? (
+            items.map((item) => (
+              <MenuItemRow key={item.id} item={item} hasTriple={hasTriple} />
+            ))
+          ) : (
+            <p className="text-center text-gray-400 py-6 text-sm">
+              No items added yet.
+            </p>
+          )}
+        </div>
       </div>
     </div>
   );
