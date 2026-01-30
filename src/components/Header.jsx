@@ -4,7 +4,7 @@ import { FaTiktok } from "react-icons/fa";
 
 export default function Header() {
   return (
-    <header className="w-full sticky top-0 z-50 bg-white shadow-lg">
+    <header className="w-full relative z-20 bg-white shadow-lg">
       <div className="max-w-6xl mx-auto flex items-center justify-between px-4 py-3">
         {/* Left Logo + Title */}
         <div className="flex items-center gap-3">

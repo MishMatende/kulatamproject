@@ -102,7 +102,7 @@ export default function PublicHome() {
   return (
     <div>
       {/* ================= HERO ================= */}
-      <section className="relative h-[50vh] md:h-[60vh] w-full overflow-hidden">
+      <section className="relative h-[50vh] md:h-[60vh] w-full overflow-hidden -mt-20 pt-20">
         <AnimatePresence>
           <motion.div
             key={heroIndex}
@@ -115,7 +115,7 @@ export default function PublicHome() {
             initial={{ opacity: 0, x: 80 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -80 }}
-            transition={{ duration: 0.8, ease: "easeInOut" }}
+            transition={{ duration: 1.0, ease: "easeInOut" }}
           />
         </AnimatePresence>
 
@@ -155,13 +155,16 @@ export default function PublicHome() {
               <motion.span
                 key={i}
                 className="absolute rounded-full border-2"
-                style={{ borderColor: "var(--brand-primary)" }}
-                initial={{ width: 36, height: 36, opacity: 0.8 }}
-                animate={{ width: 76, height: 76, opacity: 0 }}
+                style={{
+                  borderColor: "var(--brand-primary)",
+                  width: 40,
+                  height: 40,
+                }}
+                initial={{ scale: 1, opacity: 0.6 }}
+                animate={{ scale: 1.8, opacity: 0 }}
                 transition={{
-                  duration: 2,
+                  duration: 3.5,
                   repeat: Infinity,
-                  delay: i * 0.6,
                   ease: "easeOut",
                 }}
               />
