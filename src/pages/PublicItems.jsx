@@ -13,6 +13,8 @@ export default function PublicItems() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const VARIANT_ORDER = ["Single", "Double", "Triple", "Cup", "Teapot"];
+
   useEffect(() => {
     async function load() {
       setLoading(true);
@@ -92,10 +94,9 @@ export default function PublicItems() {
     return <LoadingScreen />;
   }
 
-  const hasVariants = items.some(
-    (i) => i.variants && Object.keys(i.variants).length > 0,
+  const variantKeys = VARIANT_ORDER.filter((key) =>
+    items.some((item) => item.variants && item.variants[key] !== undefined),
   );
-  const hasTriple = items.some((i) => i.variants?.Triple !== undefined);
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto">
@@ -118,11 +119,11 @@ export default function PublicItems() {
         </div>
 
         {/* VARIANT LABEL ROW */}
-        {hasVariants && (
+        {variantKeys.length > 0 && (
           <div className="flex justify-end gap-6 text-xs text-gray-500 py-1 border-b border-gray-100">
-            <span>Single</span>
-            <span>Double</span>
-            {hasTriple && <span>Triple</span>}
+            {variantKeys.map((key) => (
+              <span key={key}>{key}</span>
+            ))}
           </div>
         )}
 
@@ -130,7 +131,11 @@ export default function PublicItems() {
         <div className="divide-y divide-gray-200">
           {items.length > 0 ? (
             items.map((item) => (
-              <MenuItemRow key={item.id} item={item} hasTriple={hasTriple} />
+              <MenuItemRow
+                key={item.id}
+                item={item}
+                variantKeys={variantKeys}
+              />
             ))
           ) : (
             <p className="text-center text-gray-400 py-6 text-sm">

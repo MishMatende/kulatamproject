@@ -1,9 +1,22 @@
-export default function MenuItemRow({ item, hasTriple }) {
+export default function MenuItemRow({ item, variantKeys }) {
   const { name, price, variants, description } = item;
 
+  const displayVariants = {};
+
+  if (variants) {
+    variantKeys.forEach((key) => {
+      if (variants[key] !== undefined) {
+        displayVariants[key] = variants[key];
+      }
+    });
+  } else if (variantKeys.length > 0) {
+    // No variants → price goes in first column
+    displayVariants[variantKeys[0]] = price;
+  }
+
   return (
-    <div className="flex justify-between items-center py-2 border-b last:border-none">
-      {/* LEFT SIDE */}
+    <div className="flex justify-between items-start py-2 last:border-none">
+      {/* LEFT */}
       <div className="flex flex-col max-w-[60%]">
         <span className="font-medium">{name}</span>
         {description && (
@@ -11,16 +24,18 @@ export default function MenuItemRow({ item, hasTriple }) {
         )}
       </div>
 
-      {/* RIGHT SIDE */}
-      {variants ? (
-        <div className="flex gap-6 text-right whitespace-nowrap min-w-[40%] justify-end">
-          <span>{variants.Single ?? ""}</span>
-          <span>{variants.Double ?? ""}</span>
-          {hasTriple && <span>{variants.Triple ?? ""}</span>}
-        </div>
-      ) : (
-        <div className="min-w-[40%] text-right font-semibold">{price}</div>
-      )}
+      {/* RIGHT */}
+      <div className="flex gap-6 text-right whitespace-nowrap min-w-[40%] justify-end">
+        {variantKeys.length > 0 ? (
+          variantKeys.map((key) => (
+            <span key={key} className="tabular-nums">
+              {displayVariants[key] ?? "—"}
+            </span>
+          ))
+        ) : (
+          <span className="font-semibold tabular-nums">{price}</span>
+        )}
+      </div>
     </div>
   );
 }
