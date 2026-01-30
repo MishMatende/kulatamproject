@@ -4,53 +4,22 @@ import { FaTiktok } from "react-icons/fa";
 
 export default function Header() {
   return (
-    <header
-      className="w-full shadow-lg"
-      // style={{
-      //   backgroundColor: "var(--brand-bg-dark)",
-      //   borderColor: "var(--brand-border)",
-      // }}
-    >
+    <header className="w-full sticky top-0 z-50 bg-white shadow-lg">
       <div className="max-w-6xl mx-auto flex items-center justify-between px-4 py-3">
         {/* Left Logo + Title */}
         <div className="flex items-center gap-3">
           <img
             src="/kulatam-logo.svg"
             alt="Logo"
-            className="h-18 w-18 object-contain"
+            className="h-12 w-12 object-contain"
           />
           <h1
-            className="text-3xl font-semibold"
+            className="text-2xl md:text-3xl font-semibold"
             style={{ color: "var(--brand-bg-dark)" }}
           >
             KT CAFE
           </h1>
         </div>
-
-        {/* Categories Row */}
-        {/* <nav className="hidden md:flex gap-6">
-          <Link
-            className="text-lg"
-            style={{ color: "var(--brand-text-light)" }}
-            to="/"
-          >
-            Menu
-          </Link>
-          <Link
-            className="text-lg"
-            style={{ color: "var(--brand-text-light)" }}
-            to="/"
-          >
-            About
-          </Link>
-          <Link
-            className="text-lg"
-            style={{ color: "var(--brand-text-light)" }}
-            to="/"
-          >
-            Contact
-          </Link>
-        </nav> */}
 
         {/* Social Icons */}
         <div className="flex gap-3">
