@@ -1,16 +1,22 @@
 import { useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigationType } from "react-router-dom";
 
 export default function ScrollToTop() {
   const { pathname } = useLocation();
+  const navigationType = useNavigationType();
+  // PUSH | REPLACE | POP
 
   useEffect(() => {
+    // ❌ Do nothing on swipe-back / browser back
+    if (navigationType === "POP") return;
+
+    // ✅ Only reset scroll on normal navigation
     window.scrollTo({
       top: 0,
       left: 0,
-      behavior: "instant", // IMPORTANT: no smooth scroll on navigation
+      behavior: "instant",
     });
-  }, [pathname]);
+  }, [pathname, navigationType]);
 
   return null;
 }
