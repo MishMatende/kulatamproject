@@ -2,116 +2,232 @@ import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useParams, Link } from "react-router-dom";
 import BackButton from "../components/BackButton";
+import toast from "react-hot-toast";
 
 export default function AdminSubcategories() {
   const { categoryId } = useParams();
+
   const [category, setCategory] = useState(null);
   const [subcategories, setSubcategories] = useState([]);
   const [newName, setNewName] = useState("");
   const [newSort, setNewSort] = useState("");
-  const [error, setError] = useState("");
+
+  const CACHE_KEY = `admin_subcategories_${categoryId}`;
+  const TTL_MINUTES = 10;
 
   async function load() {
-    const { data: cat } = await supabase
+    // 1️⃣ Cache first
+    try {
+      const cachedRaw = localStorage.getItem(CACHE_KEY);
+      if (cachedRaw) {
+        const cached = JSON.parse(cachedRaw);
+        const age = Date.now() - cached.timestamp;
+
+        if (age < TTL_MINUTES * 60 * 1000) {
+          setCategory(cached.category);
+          setSubcategories(cached.subcategories);
+          return;
+        } else {
+          localStorage.removeItem(CACHE_KEY);
+        }
+      }
+    } catch {
+      localStorage.removeItem(CACHE_KEY);
+    }
+
+    // 2️⃣ Fetch fresh
+    const { data: cat, error: catErr } = await supabase
       .from("categories")
       .select("*")
       .eq("id", categoryId)
       .single();
-    setCategory(cat);
 
-    const { data: subs } = await supabase
+    if (catErr) {
+      toast.error("Failed to load category");
+      return;
+    }
+
+    const { data: subs, error: subErr } = await supabase
       .from("subcategories")
       .select("*")
       .eq("category_id", categoryId)
       .order("sort_order", { ascending: true });
 
+    if (subErr) {
+      toast.error("Failed to load subcategories");
+      return;
+    }
+
+    setCategory(cat);
     setSubcategories(subs || []);
+
+    // 3️⃣ Save cache
+    localStorage.setItem(
+      CACHE_KEY,
+      JSON.stringify({
+        category: cat,
+        subcategories: subs || [],
+        timestamp: Date.now(),
+      }),
+    );
   }
 
   async function addSubcategory(e) {
     e.preventDefault();
-    await supabase.from("subcategories").insert({
+    if (!newName.trim()) {
+      toast.error("Subcategory name is required");
+      return;
+    }
+
+    const { error } = await supabase.from("subcategories").insert({
       name: newName,
       sort_order: newSort ? parseInt(newSort) : null,
       category_id: categoryId,
     });
 
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    toast.success("Subcategory added");
     setNewName("");
     setNewSort("");
+    localStorage.removeItem(CACHE_KEY);
     load();
   }
 
   async function updateField(id, field, value) {
-    await supabase
+    const { error } = await supabase
       .from("subcategories")
       .update({ [field]: value })
       .eq("id", id);
 
+    if (error) {
+      toast.error("Failed to update subcategory");
+      return;
+    }
+
+    toast.success("Subcategory updated");
+    localStorage.removeItem(CACHE_KEY);
     load();
   }
 
   async function deleteSubcategory(id) {
-    await supabase.from("subcategories").delete().eq("id", id);
+    if (!confirm("Delete this subcategory?")) return;
+
+    const { error } = await supabase
+      .from("subcategories")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      toast.error("Failed to delete subcategory");
+      return;
+    }
+
+    toast.success("Subcategory deleted");
+    localStorage.removeItem(CACHE_KEY);
     load();
   }
 
   useEffect(() => {
     load();
-  }, []);
+  }, [categoryId]);
 
   return (
-    <div className="p-4 max-w-lg mx-auto space-y-4">
+    <div className="space-y-6 max-w-xl mx-auto">
       <BackButton />
-      <h1 className="text-xl font-bold">Subcategories for: {category?.name}</h1>
 
-      <Link to="/admin/categories" className="underline text-blue-600 text-sm">
-        ← Back to Categories
-      </Link>
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-semibold">Subcategories</h1>
+        <p className="text-sm text-gray-500">
+          Category: <span className="font-medium">{category?.name}</span>
+        </p>
+      </div>
 
-      <form onSubmit={addSubcategory} className="flex gap-2">
+      {/* Add Subcategory */}
+      <form
+        onSubmit={addSubcategory}
+        className="rounded-2xl bg-white p-4 shadow-sm border border-gray-200 flex gap-2"
+      >
         <input
-          className="border p-2 flex-1"
+          className="flex-1 rounded-xl border border-gray-300 px-3 py-2 text-sm
+                     focus:outline-none focus:ring-2 focus:ring-black"
           placeholder="Subcategory name"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
         />
         <input
-          className="border p-2 w-20"
+          className="w-20 rounded-xl border border-gray-300 px-2 py-2 text-sm
+                     focus:outline-none focus:ring-2 focus:ring-black"
           type="number"
           placeholder="Sort"
           value={newSort}
           onChange={(e) => setNewSort(e.target.value)}
         />
-        <button className="bg-black text-white px-3">Add</button>
+        <button
+          className="rounded-xl bg-black text-white px-4 py-2 text-sm font-medium
+                     active:scale-95 transition"
+        >
+          Add
+        </button>
       </form>
 
-      {error && <p className="text-red-600">{error}</p>}
+      {/* Info Note */}
+      <div
+        className="rounded-xl border border-blue-200 px-4 py-3"
+        style={{
+          borderColor: "var(--brand-primary)",
+          color: "var(--brand-primary)",
+        }}
+      >
+        <p className="text-sm">
+          You can edit the name and sort order directly. Changes save when you
+          leave the field.
+        </p>
+      </div>
 
-      <ul className="space-y-2">
+      {/* Subcategory List */}
+      <div className="space-y-3">
         {subcategories.map((sub) => (
-          <li key={sub.id} className="flex items-center gap-2">
-            <input
-              className="border p-2 flex-1"
-              defaultValue={sub.name}
-              onBlur={(e) => updateField(sub.id, "name", e.target.value)}
-            />
-            <input
-              className="border p-2 w-20"
-              type="number"
-              defaultValue={sub.sort_order}
-              onBlur={(e) =>
-                updateField(sub.id, "sort_order", parseInt(e.target.value))
-              }
-            />
-            <button
-              className="text-red-600"
-              onClick={() => deleteSubcategory(sub.id)}
-            >
-              Delete
-            </button>
-          </li>
+          <div
+            key={sub.id}
+            className="rounded-2xl bg-white p-4 shadow-sm border border-gray-200"
+          >
+            <div className="flex items-center gap-2">
+              <input
+                className="flex-1 rounded-xl border border-gray-300 px-3 py-2 text-sm
+                           focus:outline-none focus:ring-2 focus:ring-black"
+                defaultValue={sub.name}
+                onBlur={(e) => updateField(sub.id, "name", e.target.value)}
+              />
+              <input
+                className="w-20 rounded-xl border border-gray-300 px-2 py-2 text-sm
+                           focus:outline-none focus:ring-2 focus:ring-black"
+                type="number"
+                defaultValue={sub.sort_order}
+                onBlur={(e) =>
+                  updateField(sub.id, "sort_order", parseInt(e.target.value))
+                }
+              />
+              <button
+                onClick={() => deleteSubcategory(sub.id)}
+                className="text-sm font-medium text-red-600"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
         ))}
-      </ul>
+
+        {subcategories.length === 0 && (
+          <p className="text-center text-sm text-gray-400">
+            No subcategories yet.
+          </p>
+        )}
+      </div>
     </div>
   );
 }

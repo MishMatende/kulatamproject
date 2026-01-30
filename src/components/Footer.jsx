@@ -34,7 +34,7 @@ export default function Footer() {
             <FaTiktok size={16} />
           </a>
           <a
-            href="tel:+254797379744"
+            href="tel:+254100931818"
             className="p-2 rounded-full border"
             style={{
               borderColor: "var(--brand-primary)",

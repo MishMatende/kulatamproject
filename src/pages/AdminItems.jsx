@@ -1,308 +1,353 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import BackButton from "../components/BackButton";
+import toast from "react-hot-toast";
+import { motion, AnimatePresence } from "framer-motion";
+
+const PAGE_SIZE = 5;
 
 export default function AdminItems() {
   const [categories, setCategories] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
   const [items, setItems] = useState([]);
 
-  // Form state
+  // Modal
+  const [open, setOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+
+  // Form
   const [categoryId, setCategoryId] = useState("");
   const [subcategoryId, setSubcategoryId] = useState("");
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
-
-  // Variants
-  const [single, setSingle] = useState("");
-  const [double, setDouble] = useState("");
-  const [triple, setTriple] = useState("");
-  const [small, setSmall] = useState("");
-  const [medium, setMedium] = useState("");
-  const [large, setLarge] = useState("");
-
-  // Images
   const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState(null);
 
-  const [error, setError] = useState("");
+  // Search + pagination
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+
+  const fileInputRef = useRef(null);
+
+  const CACHE_KEY = "admin_items";
+  const TTL_MINUTES = 10;
+
+  /* ---------------- LOAD ---------------- */
 
   async function load() {
-    const { data: cats } = await supabase
-      .from("categories")
-      .select("id, name")
-      .order("sort_order", { ascending: true });
+    try {
+      const cached = JSON.parse(localStorage.getItem(CACHE_KEY));
+      if (cached && Date.now() - cached.timestamp < TTL_MINUTES * 60000) {
+        setCategories(cached.categories);
+        setSubcategories(cached.subcategories);
+        setItems(cached.items);
+        return;
+      }
+    } catch {}
 
+    const { data: cats } = await supabase.from("categories").select("id,name");
     const { data: subs } = await supabase
       .from("subcategories")
-      .select("id, name, category_id")
-      .order("sort_order", { ascending: true });
-
-    const { data: menu } = await supabase
-      .from("menu_items")
-      .select("*")
-      .order("sort_order", { ascending: true });
+      .select("id,name,category_id");
+    const { data: menu } = await supabase.from("menu_items").select("*");
 
     setCategories(cats || []);
     setSubcategories(subs || []);
     setItems(menu || []);
+
+    localStorage.setItem(
+      CACHE_KEY,
+      JSON.stringify({
+        categories: cats || [],
+        subcategories: subs || [],
+        items: menu || [],
+        timestamp: Date.now(),
+      }),
+    );
   }
 
   useEffect(() => {
     load();
   }, []);
 
-  async function handleAddItem(e) {
-    e.preventDefault();
-    setError("");
+  /* ---------------- SEARCH + PAGINATION ---------------- */
 
-    if (!name.trim() || !categoryId || !subcategoryId) {
-      setError("Name, Category and Subcategory are required.");
+  const filteredItems = useMemo(
+    () =>
+      items.filter((i) => i.name.toLowerCase().includes(search.toLowerCase())),
+    [items, search],
+  );
+
+  const totalPages = Math.ceil(filteredItems.length / PAGE_SIZE);
+
+  const paginatedItems = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredItems.slice(start, start + PAGE_SIZE);
+  }, [filteredItems, page]);
+
+  useEffect(() => setPage(1), [search]);
+
+  /* ---------------- IMAGE ---------------- */
+
+  function handleFileChange(f) {
+    setFile(f);
+    if (f) {
+      setPreview(URL.createObjectURL(f));
+    } else {
+      setPreview(null);
+    }
+  }
+
+  /* ---------------- MODALS ---------------- */
+
+  function openAddModal() {
+    setEditingItem(null);
+    setName("");
+    setDesc("");
+    setCategoryId("");
+    setSubcategoryId("");
+    setFile(null);
+    setPreview(null);
+    setOpen(true);
+  }
+
+  function openEditModal(item) {
+    setEditingItem(item);
+    setName(item.name);
+    setDesc(item.description || "");
+    setCategoryId(item.category_id);
+    setSubcategoryId(item.subcategory_id);
+    setPreview(item.image_url || null);
+    setFile(null);
+    setOpen(true);
+  }
+
+  /* ---------------- SAVE ---------------- */
+
+  async function handleSave(e) {
+    e.preventDefault();
+
+    if (!name || !categoryId || !subcategoryId) {
+      toast.error("Name, category & subcategory required");
       return;
     }
 
-    // Build variants JSON
-    let variants = null;
+    let imageUrl = editingItem?.image_url || null;
 
-    const categoryName = categories.find((c) => c.id === categoryId)?.name;
-
-    if (categoryName === "Coffee") {
-      variants = {
-        Single: single ? Number(single) : null,
-        Double: double ? Number(double) : null,
-        Triple: triple ? Number(triple) : null,
-      };
-    } else if (categoryName === "Juice") {
-      variants = {
-        Small: small ? Number(small) : null,
-        Medium: medium ? Number(medium) : null,
-        Large: large ? Number(large) : null,
-      };
+    if (file) {
+      const path = `${Date.now()}-${file.name}`;
+      await supabase.storage.from("menu-images").upload(path, file);
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("menu-images").getPublicUrl(path);
+      imageUrl = publicUrl;
     }
 
-    // Insert item first (without image)
-    const { data: inserted, error: insertError } = await supabase
-      .from("menu_items")
-      .insert({
+    if (editingItem) {
+      await supabase
+        .from("menu_items")
+        .update({
+          name,
+          description: desc,
+          category_id: categoryId,
+          subcategory_id: subcategoryId,
+          image_url: imageUrl,
+        })
+        .eq("id", editingItem.id);
+
+      toast.success("Item updated");
+    } else {
+      await supabase.from("menu_items").insert({
         name,
         description: desc,
         category_id: categoryId,
         subcategory_id: subcategoryId,
-        variants: variants,
-        image_url: null,
-      })
-      .select()
-      .single();
+        image_url: imageUrl,
+      });
 
-    if (insertError) {
-      setError(insertError.message);
-      return;
+      toast.success("Item added");
     }
 
-    const itemId = inserted.id;
-
-    // If image selected, upload it
-    if (file) {
-      const fileName = `${itemId}-${Date.now()}`;
-      const { data: img, error: uploadError } = await supabase.storage
-        .from("menu-images")
-        .upload(fileName, file, {
-          cacheControl: "3600",
-          upsert: false,
-        });
-
-      if (uploadError) {
-        setError(uploadError.message);
-        return;
-      }
-
-      // Get public URL
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("menu-images").getPublicUrl(fileName);
-
-      // Update item with image URL
-      await supabase
-        .from("menu_items")
-        .update({ image_url: publicUrl })
-        .eq("id", itemId);
-    }
-
-    // Reset form
-    setName("");
-    setDesc("");
-    setSingle("");
-    setDouble("");
-    setTriple("");
-    setSmall("");
-    setMedium("");
-    setLarge("");
-    setFile(null);
-
+    setOpen(false);
+    localStorage.removeItem(CACHE_KEY);
     load();
   }
 
-  async function deleteItem(id) {
-    await supabase.from("menu_items").delete().eq("id", id);
-    load();
-  }
-
-  // Filter subcategories by selected category
   const filteredSubs = subcategories.filter(
-    (s) => s.category_id === categoryId
+    (s) => s.category_id === categoryId,
   );
 
+  /* ---------------- UI ---------------- */
+
   return (
-    <div className="p-4 max-w-3xl mx-auto space-y-6">
+    <div className="space-y-5 max-w-3xl mx-auto">
       <BackButton />
-      <h1 className="text-xl font-bold">Menu Items</h1>
 
-      <form onSubmit={handleAddItem} className="space-y-3">
-        <input
-          className="border p-2 w-full"
-          placeholder="Item name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-
-        <textarea
-          className="border p-2 w-full"
-          placeholder="Description"
-          rows={2}
-          value={desc}
-          onChange={(e) => setDesc(e.target.value)}
-        />
-
-        <select
-          className="border p-2 w-full"
-          value={categoryId}
-          onChange={(e) => {
-            setCategoryId(e.target.value);
-            setSubcategoryId("");
-          }}
-        >
-          <option value="">Select Category</option>
-          {categories.map((cat) => (
-            <option key={cat.id} value={cat.id}>
-              {cat.name}
-            </option>
-          ))}
-        </select>
-
-        <select
-          className="border p-2 w-full"
-          value={subcategoryId}
-          onChange={(e) => setSubcategoryId(e.target.value)}
-        >
-          <option value="">Select Subcategory</option>
-          {filteredSubs.map((sub) => (
-            <option key={sub.id} value={sub.id}>
-              {sub.name}
-            </option>
-          ))}
-        </select>
-
-        {/* Variant fields */}
-        {categoryId && (
-          <div className="space-y-2">
-            <p className="font-semibold">Variants:</p>
-
-            {categories.find((c) => c.id === categoryId)?.name === "Coffee" && (
-              <div className="grid grid-cols-3 gap-2">
-                <input
-                  className="border p-2"
-                  type="number"
-                  placeholder="Single"
-                  value={single}
-                  onChange={(e) => setSingle(e.target.value)}
-                />
-                <input
-                  className="border p-2"
-                  type="number"
-                  placeholder="Double"
-                  value={double}
-                  onChange={(e) => setDouble(e.target.value)}
-                />
-                <input
-                  className="border p-2"
-                  type="number"
-                  placeholder="Triple"
-                  value={triple}
-                  onChange={(e) => setTriple(e.target.value)}
-                />
-              </div>
-            )}
-
-            {categories.find((c) => c.id === categoryId)?.name === "Juice" && (
-              <div className="grid grid-cols-3 gap-2">
-                <input
-                  className="border p-2"
-                  type="number"
-                  placeholder="Small"
-                  value={small}
-                  onChange={(e) => setSmall(e.target.value)}
-                />
-                <input
-                  className="border p-2"
-                  type="number"
-                  placeholder="Medium"
-                  value={medium}
-                  onChange={(e) => setMedium(e.target.value)}
-                />
-                <input
-                  className="border p-2"
-                  type="number"
-                  placeholder="Large"
-                  value={large}
-                  onChange={(e) => setLarge(e.target.value)}
-                />
-              </div>
-            )}
-          </div>
-        )}
-
+      <div className="flex justify-between items-center">
         <div>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => setFile(e.target.files[0])}
-          />
+          <h1 className="text-2xl font-semibold">Menu Items</h1>
+          <p className="text-sm text-gray-500">Tap an item to edit</p>
         </div>
 
-        {error && <p className="text-red-600">{error}</p>}
+        <button
+          onClick={openAddModal}
+          className="rounded-full bg-black text-white px-4 py-2 text-sm shadow-md"
+        >
+          + Add Item
+        </button>
+      </div>
 
-        <button className="bg-black text-white px-4 py-2">Add Item</button>
-      </form>
+      <input
+        className="w-full rounded-xl bg-white shadow-sm px-4 py-3 text-sm focus:outline-none"
+        placeholder="Search items…"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
 
-      {/* Items List */}
-      <div className="space-y-4">
-        {items.map((item) => (
-          <div key={item.id} className="border p-3 rounded space-y-2">
+      {/* Items */}
+      <div className="space-y-3">
+        {paginatedItems.map((item) => (
+          <div
+            key={item.id}
+            onClick={() => openEditModal(item)}
+            className="bg-white rounded-2xl shadow-sm p-4 flex gap-4 cursor-pointer"
+          >
             {item.image_url && (
               <img
                 src={item.image_url}
-                alt={item.name}
-                className="w-24 h-24 rounded object-cover"
+                className="w-16 h-16 rounded-xl object-cover"
               />
             )}
-
-            <div className="font-semibold">{item.name}</div>
-            <div className="text-sm text-gray-600">{item.description}</div>
-
-            {item.variants && (
-              <pre className="text-xs bg-gray-100 p-2 rounded">
-                {JSON.stringify(item.variants, null, 2)}
-              </pre>
-            )}
-
-            <button
-              className="text-red-600 text-sm"
-              onClick={() => deleteItem(item.id)}
-            >
-              Delete
-            </button>
+            <div>
+              <h3 className="font-semibold">{item.name}</h3>
+              <p className="text-sm text-gray-500">{item.description}</p>
+            </div>
           </div>
         ))}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between text-sm text-gray-500">
+          <button
+            disabled={page === 1}
+            onClick={() => setPage((p) => p - 1)}
+            className="disabled:opacity-40"
+          >
+            Previous
+          </button>
+          <span>
+            Page {page} of {totalPages}
+          </span>
+          <button
+            disabled={page === totalPages}
+            onClick={() => setPage((p) => p + 1)}
+            className="disabled:opacity-40"
+          >
+            Next
+          </button>
+        </div>
+      )}
+
+      {/* ---------------- MODAL ---------------- */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setOpen(false)}
+          >
+            <motion.form
+              onSubmit={handleSave}
+              onClick={(e) => e.stopPropagation()}
+              initial={{ y: 100 }}
+              animate={{ y: 0 }}
+              exit={{ y: 100 }}
+              className="bg-white rounded-t-3xl sm:rounded-3xl p-5 w-full sm:max-w-lg space-y-4"
+            >
+              <h2 className="text-lg font-semibold">
+                {editingItem ? "Edit Item" : "Add Item"}
+              </h2>
+
+              {/* Image Upload */}
+              <div
+                onClick={() => fileInputRef.current.click()}
+                className="rounded-xl bg-gray-100 h-40 flex flex-col items-center justify-center cursor-pointer text-gray-500"
+              >
+                {preview ? (
+                  <img
+                    src={preview}
+                    className="w-full h-full object-cover rounded-xl"
+                  />
+                ) : (
+                  <>
+                    <span className="text-2xl">📷</span>
+                    <span className="text-sm mt-1">Tap to add image</span>
+                  </>
+                )}
+              </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                hidden
+                onChange={(e) => handleFileChange(e.target.files[0])}
+              />
+
+              <input
+                className="w-full rounded-xl bg-gray-100 px-4 py-2"
+                placeholder="Name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+
+              <textarea
+                className="w-full rounded-xl bg-gray-100 px-4 py-2"
+                placeholder="Description"
+                rows={2}
+                value={desc}
+                onChange={(e) => setDesc(e.target.value)}
+              />
+
+              <select
+                className="w-full rounded-xl bg-gray-100 px-4 py-2"
+                value={categoryId}
+                onChange={(e) => {
+                  setCategoryId(e.target.value);
+                  setSubcategoryId("");
+                }}
+              >
+                <option value="">Category</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                className="w-full rounded-xl bg-gray-100 px-4 py-2"
+                value={subcategoryId}
+                onChange={(e) => setSubcategoryId(e.target.value)}
+              >
+                <option value="">Subcategory</option>
+                {filteredSubs.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+
+              <button className="w-full bg-black text-white rounded-xl py-2">
+                Save
+              </button>
+            </motion.form>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

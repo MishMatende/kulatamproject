@@ -1,36 +1,93 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { useNavigate } from "react-router-dom";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 
 export default function AdminDashboard() {
-  const nav = useNavigate();
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    async function check() {
+    async function loadUser() {
       const { data } = await supabase.auth.getUser();
-      if (!data?.user) {
-        nav("/admin/login");
-      } else {
-        setUser(data.user);
-      }
+      setUser(data.user);
     }
-    check();
+
+    loadUser();
   }, []);
 
+  const containerVariants = {
+    hidden: {},
+    show: {
+      transition: {
+        staggerChildren: 0.12,
+      },
+    },
+  };
+
+  const cardVariants = {
+    hidden: { opacity: 0, y: 20 },
+    show: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.35, ease: "easeOut" },
+    },
+  };
+
   return (
-    <div className="p-6">
-      <h1 className="text-xl font-bold mb-4">Admin Dashboard</h1>
-      {user && <p>Welcome, {user.email}</p>}
-      <nav className="space-x-4">
-        <Link to="/admin/categories" className="text-blue-600 underline">
-          Manage Categories
-        </Link>
-        <Link to="/admin/items" className="text-blue-600 underline">
-          Manage Items
-        </Link>
-      </nav>
+    <div className="space-y-6">
+      {/* Welcome Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: "easeOut" }}
+        className="rounded-2xl bg-gradient-to-r from-[var(--brand-bg-dark)] to-gray-800 p-5 text-white shadow-md"
+      >
+        <h1 className="text-xl font-semibold">Welcome back</h1>
+      </motion.div>
+
+      {/* Action Cards */}
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        className="grid grid-cols-1 gap-4"
+      >
+        <motion.div variants={cardVariants}>
+          <Link
+            to="/admin/categories"
+            className="block rounded-2xl bg-white p-5 shadow-sm border border-gray-200
+                       active:scale-[0.97] transition"
+          >
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-xl">
+                📂
+              </div>
+              <div>
+                <h2 className="font-semibold">Categories</h2>
+                <p className="text-sm text-gray-500">Manage menu categories</p>
+              </div>
+            </div>
+          </Link>
+        </motion.div>
+
+        <motion.div variants={cardVariants}>
+          <Link
+            to="/admin/items"
+            className="block rounded-2xl bg-white p-5 shadow-sm border border-gray-200
+                       active:scale-[0.97] transition"
+          >
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-xl bg-green-100 text-green-600 flex items-center justify-center text-xl">
+                🍽️
+              </div>
+              <div>
+                <h2 className="font-semibold">Menu Items</h2>
+                <p className="text-sm text-gray-500">Add and edit menu items</p>
+              </div>
+            </div>
+          </Link>
+        </motion.div>
+      </motion.div>
     </div>
   );
 }

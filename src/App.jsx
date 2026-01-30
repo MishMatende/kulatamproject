@@ -11,6 +11,7 @@ import PublicItems from "./pages/PublicItems";
 import PublicLayout from "./layouts/PublicLayouts";
 import { useEffect, useState } from "react";
 import LoadingScreen from "./components/LoadingScreen";
+import AdminLayout from "./layouts/AdminLayout";
 
 export default function App() {
   const [loading, setLoading] = useState(true);
@@ -40,13 +41,15 @@ export default function App() {
         />
       </Route>
       <Route path="/admin/login" element={<AdminLogin />} />
-      <Route path="/admin/dashboard" element={<AdminDashboard />} />
-      <Route path="/admin/categories" element={<AdminCategories />} />
-      <Route path="/admin/items" element={<AdminItems />} />
-      <Route
-        path="/admin/categories/:categoryId/subcategories"
-        element={<AdminSubcategories />}
-      />
+      <Route element={<AdminLayout />}>
+        <Route path="/admin/dashboard" element={<AdminDashboard />} />
+        <Route path="/admin/categories" element={<AdminCategories />} />
+        <Route path="/admin/items" element={<AdminItems />} />
+        <Route
+          path="/admin/categories/:categoryId/subcategories"
+          element={<AdminSubcategories />}
+        />
+      </Route>
     </Routes>
   );
 }
