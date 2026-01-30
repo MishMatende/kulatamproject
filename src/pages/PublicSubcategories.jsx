@@ -60,6 +60,29 @@ export default function PublicSubcategories() {
 
   useEffect(() => {
     async function load() {
+      const CACHE_KEY = `public_category_${categoryId}`;
+      const TTL_MINUTES = 15;
+
+      // 1️⃣ Try cache first
+      try {
+        const cachedRaw = localStorage.getItem(CACHE_KEY);
+        if (cachedRaw) {
+          const cached = JSON.parse(cachedRaw);
+          const age = Date.now() - cached.timestamp;
+
+          if (age < TTL_MINUTES * 60 * 1000) {
+            setCategory(cached.category);
+            setSubcategories(cached.subcategories);
+            return;
+          } else {
+            localStorage.removeItem(CACHE_KEY);
+          }
+        }
+      } catch {
+        localStorage.removeItem(CACHE_KEY);
+      }
+
+      // 2️⃣ Fetch from Supabase
       const { data: cat } = await supabase
         .from("categories")
         .select("id, name")
@@ -74,6 +97,16 @@ export default function PublicSubcategories() {
 
       setCategory(cat);
       setSubcategories(subs || []);
+
+      // 3️⃣ Save to cache
+      localStorage.setItem(
+        CACHE_KEY,
+        JSON.stringify({
+          category: cat,
+          subcategories: subs || [],
+          timestamp: Date.now(),
+        }),
+      );
     }
 
     load();

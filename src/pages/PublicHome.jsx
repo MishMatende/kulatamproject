@@ -47,13 +47,40 @@ export default function PublicHome() {
 
   useEffect(() => {
     async function load() {
-      const { data } = await supabase
+      const CACHE_KEY = "public_categories";
+      const CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+      const cached = localStorage.getItem(CACHE_KEY);
+
+      if (cached) {
+        const parsed = JSON.parse(cached);
+
+        // If cache still valid
+        if (Date.now() - parsed.timestamp < CACHE_TTL) {
+          setCategories(parsed.data);
+          return;
+        }
+      }
+
+      // Fetch from Supabase if no cache or expired
+      const { data, error } = await supabase
         .from("categories")
         .select("*")
         .order("sort_order", { ascending: true });
 
-      setCategories(data || []);
+      if (!error && data) {
+        setCategories(data);
+
+        localStorage.setItem(
+          CACHE_KEY,
+          JSON.stringify({
+            timestamp: Date.now(),
+            data,
+          }),
+        );
+      }
     }
+
     load();
   }, []);
 
