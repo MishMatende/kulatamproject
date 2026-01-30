@@ -3,12 +3,15 @@ import { supabase } from "../lib/supabase";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import BackButton from "../components/BackButton";
+import LoadingScreen from "../components/LoadingScreen";
 
 export default function PublicSubcategories() {
   const { categoryId } = useParams();
+  const navigate = useNavigate();
+
   const [category, setCategory] = useState(null);
   const [subcategories, setSubcategories] = useState([]);
-  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
 
   // Subcategory image mapping
   const subcategoryImages = {
@@ -60,6 +63,8 @@ export default function PublicSubcategories() {
 
   useEffect(() => {
     async function load() {
+      setLoading(true);
+
       const CACHE_KEY = `public_category_${categoryId}`;
       const TTL_MINUTES = 15;
 
@@ -73,6 +78,7 @@ export default function PublicSubcategories() {
           if (age < TTL_MINUTES * 60 * 1000) {
             setCategory(cached.category);
             setSubcategories(cached.subcategories);
+            setLoading(false);
             return;
           } else {
             localStorage.removeItem(CACHE_KEY);
@@ -107,14 +113,22 @@ export default function PublicSubcategories() {
           timestamp: Date.now(),
         }),
       );
+
+      setLoading(false);
     }
 
     load();
   }, [categoryId]);
 
+  // 🔄 Loading state
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
   return (
     <div className="p-6 space-y-4">
       <BackButton />
+
       <h1
         className="text-2xl font-bold text-center"
         style={{ color: "var(--brand-primary)" }}

@@ -28,7 +28,7 @@ export default function Header() {
         </div>
 
         {/* Categories Row */}
-        <nav className="hidden md:flex gap-6">
+        {/* <nav className="hidden md:flex gap-6">
           <Link
             className="text-lg"
             style={{ color: "var(--brand-text-light)" }}
@@ -50,12 +50,12 @@ export default function Header() {
           >
             Contact
           </Link>
-        </nav>
+        </nav> */}
 
         {/* Social Icons */}
         <div className="flex gap-3">
           <a
-            href="#"
+            href="https://www.instagram.com/kulatam_/"
             className="p-2 rounded-full border"
             style={{
               borderColor: "var(--brand-primary)",
@@ -65,7 +65,7 @@ export default function Header() {
             <FiInstagram size={16} />
           </a>
           <a
-            href="#"
+            href="https://www.tiktok.com/@kulatam_?_r=1&_t=ZS-93VgTSXig44"
             className="p-2 rounded-full border"
             style={{
               borderColor: "var(--brand-primary)",
@@ -75,7 +75,7 @@ export default function Header() {
             <FaTiktok size={16} />
           </a>
           <a
-            href="tel:+254700000000"
+            href="tel:+254797379744"
             className="p-2 rounded-full border"
             style={{
               borderColor: "var(--brand-primary)",

@@ -14,7 +14,7 @@ export default function Footer() {
 
         <div className="flex gap-3">
           <a
-            href="#"
+            href="https://www.instagram.com/kulatam_/"
             className="p-2 rounded-full border"
             style={{
               borderColor: "var(--brand-primary)",
@@ -24,7 +24,7 @@ export default function Footer() {
             <FiInstagram size={16} />
           </a>
           <a
-            href="#"
+            href="https://www.tiktok.com/@kulatam_?_r=1&_t=ZS-93VgTSXig44"
             className="p-2 rounded-full border"
             style={{
               borderColor: "var(--brand-primary)",
@@ -34,7 +34,7 @@ export default function Footer() {
             <FaTiktok size={16} />
           </a>
           <a
-            href="tel:+254700000000"
+            href="tel:+254797379744"
             className="p-2 rounded-full border"
             style={{
               borderColor: "var(--brand-primary)",
