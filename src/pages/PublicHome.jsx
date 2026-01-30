@@ -47,7 +47,7 @@ export default function PublicHome() {
   useEffect(() => {
     const t = setInterval(() => {
       setHeroIndex((i) => (i + 1) % HERO_IMAGES.length);
-    }, 2000);
+    }, 3000);
 
     return () => clearInterval(t);
   }, []);
