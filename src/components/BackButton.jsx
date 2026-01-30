@@ -1,6 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { useEffect } from "react";
 
 function BackButton({ fallback }) {
   const navigate = useNavigate();
@@ -9,14 +8,22 @@ function BackButton({ fallback }) {
   // ❌ Hide on home page
   if (location.pathname === "/") return null;
 
-  // Auto fallback
   function getFallback() {
     if (fallback) return fallback;
     if (location.pathname.startsWith("/admin")) return "/admin/dashboard";
     return "/";
   }
 
+  function haptic() {
+    // Very short, subtle vibration
+    if (navigator.vibrate) {
+      navigator.vibrate(10);
+    }
+  }
+
   function handleBack() {
+    haptic();
+
     if (window.history.length > 1) {
       navigate(-1);
     } else {
@@ -24,7 +31,6 @@ function BackButton({ fallback }) {
     }
   }
 
-  // 🧠 Smart label
   function getLabel() {
     if (location.pathname.includes("/subcategories")) {
       return "Back to Categories";
@@ -35,43 +41,12 @@ function BackButton({ fallback }) {
     return "Back";
   }
 
-  // 👆 Swipe-back gesture (mobile)
-  useEffect(() => {
-    let startX = null;
-
-    function onTouchStart(e) {
-      startX = e.touches[0].clientX;
-    }
-
-    function onTouchEnd(e) {
-      if (startX === null) return;
-
-      const endX = e.changedTouches[0].clientX;
-      const diff = endX - startX;
-
-      // Swipe right threshold
-      if (diff > 80) {
-        handleBack();
-      }
-
-      startX = null;
-    }
-
-    window.addEventListener("touchstart", onTouchStart);
-    window.addEventListener("touchend", onTouchEnd);
-
-    return () => {
-      window.removeEventListener("touchstart", onTouchStart);
-      window.removeEventListener("touchend", onTouchEnd);
-    };
-  }, []);
-
   return (
     <motion.button
       onClick={handleBack}
-      initial={{ opacity: 0, x: -16 }}
+      initial={{ opacity: 0, x: -12 }}
       animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -16 }}
+      exit={{ opacity: 0, x: -12 }}
       whileHover={{ x: -4 }}
       whileTap={{ scale: 0.95 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
@@ -79,15 +54,11 @@ function BackButton({ fallback }) {
         inline-flex items-center gap-2
         rounded-full px-4 py-2
         text-sm font-semibold
-        shadow-sm border bg-white
+        shadow-sm bg-white
         active:scale-95
       "
-      style={{
-        borderColor: "var(--brand-primary)",
-        color: "var(--brand-primary)",
-      }}
+      style={{ color: "var(--brand-primary)" }}
     >
-      {/* Animated Arrow */}
       <motion.span
         aria-hidden
         whileHover={{ x: -4 }}

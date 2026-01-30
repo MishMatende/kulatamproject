@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import BackButton from "../components/BackButton";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
+import { FiTrash2 } from "react-icons/fi";
 
 const PAGE_SIZE = 5;
 
@@ -11,9 +12,12 @@ export default function AdminItems() {
   const [subcategories, setSubcategories] = useState([]);
   const [items, setItems] = useState([]);
 
-  // Modal
+  // Edit modal
   const [open, setOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+
+  // Delete modal
+  const [deleteItem, setDeleteItem] = useState(null);
 
   // Form
   const [categoryId, setCategoryId] = useState("");
@@ -32,8 +36,15 @@ export default function AdminItems() {
   const CACHE_KEY = "admin_items";
   const TTL_MINUTES = 10;
 
-  /* ---------------- LOAD ---------------- */
+  /* ---------------- HAPTIC ---------------- */
+  function haptic(type = "light") {
+    if (!navigator.vibrate) return;
+    if (type === "light") navigator.vibrate(10);
+    if (type === "medium") navigator.vibrate(20);
+    if (type === "heavy") navigator.vibrate([20, 40, 20]);
+  }
 
+  /* ---------------- LOAD ---------------- */
   async function load() {
     try {
       const cached = JSON.parse(localStorage.getItem(CACHE_KEY));
@@ -71,7 +82,6 @@ export default function AdminItems() {
   }, []);
 
   /* ---------------- SEARCH + PAGINATION ---------------- */
-
   const filteredItems = useMemo(
     () =>
       items.filter((i) => i.name.toLowerCase().includes(search.toLowerCase())),
@@ -88,18 +98,12 @@ export default function AdminItems() {
   useEffect(() => setPage(1), [search]);
 
   /* ---------------- IMAGE ---------------- */
-
   function handleFileChange(f) {
     setFile(f);
-    if (f) {
-      setPreview(URL.createObjectURL(f));
-    } else {
-      setPreview(null);
-    }
+    setPreview(f ? URL.createObjectURL(f) : null);
   }
 
-  /* ---------------- MODALS ---------------- */
-
+  /* ---------------- OPEN MODALS ---------------- */
   function openAddModal() {
     setEditingItem(null);
     setName("");
@@ -123,9 +127,9 @@ export default function AdminItems() {
   }
 
   /* ---------------- SAVE ---------------- */
-
   async function handleSave(e) {
     e.preventDefault();
+    haptic("medium");
 
     if (!name || !categoryId || !subcategoryId) {
       toast.error("Name, category & subcategory required");
@@ -173,12 +177,25 @@ export default function AdminItems() {
     load();
   }
 
+  /* ---------------- DELETE ---------------- */
+  async function confirmDelete() {
+    if (!deleteItem) return;
+
+    haptic("heavy");
+
+    await supabase.from("menu_items").delete().eq("id", deleteItem.id);
+    toast.success("Item deleted");
+
+    setDeleteItem(null);
+    localStorage.removeItem(CACHE_KEY);
+    load();
+  }
+
   const filteredSubs = subcategories.filter(
     (s) => s.category_id === categoryId,
   );
 
   /* ---------------- UI ---------------- */
-
   return (
     <div className="space-y-5 max-w-3xl mx-auto">
       <BackButton />
@@ -190,7 +207,10 @@ export default function AdminItems() {
         </div>
 
         <button
-          onClick={openAddModal}
+          onClick={() => {
+            haptic("medium");
+            openAddModal();
+          }}
           className="rounded-full bg-black text-white px-4 py-2 text-sm shadow-md"
         >
           + Add Item
@@ -209,19 +229,38 @@ export default function AdminItems() {
         {paginatedItems.map((item) => (
           <div
             key={item.id}
-            onClick={() => openEditModal(item)}
-            className="bg-white rounded-2xl shadow-sm p-4 flex gap-4 cursor-pointer"
+            className="bg-white rounded-2xl shadow-sm p-4 flex gap-4 items-center"
           >
-            {item.image_url && (
-              <img
-                src={item.image_url}
-                className="w-16 h-16 rounded-xl object-cover"
-              />
-            )}
-            <div>
-              <h3 className="font-semibold">{item.name}</h3>
-              <p className="text-sm text-gray-500">{item.description}</p>
+            <div
+              onClick={() => {
+                haptic("light");
+                openEditModal(item);
+              }}
+              className="flex gap-4 flex-1 cursor-pointer"
+            >
+              {item.image_url && (
+                <img
+                  src={item.image_url}
+                  className="w-16 h-16 rounded-xl object-cover"
+                />
+              )}
+              <div>
+                <h3 className="font-semibold">{item.name}</h3>
+                <p className="text-sm text-gray-500">{item.description}</p>
+              </div>
             </div>
+
+            {/* Delete Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                haptic("medium");
+                setDeleteItem(item);
+              }}
+              className="p-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50"
+            >
+              <FiTrash2 size={16} />
+            </button>
           </div>
         ))}
       </div>
@@ -249,7 +288,52 @@ export default function AdminItems() {
         </div>
       )}
 
-      {/* ---------------- MODAL ---------------- */}
+      {/* ---------------- DELETE CONFIRM MODAL ---------------- */}
+      <AnimatePresence>
+        {deleteItem && (
+          <motion.div
+            className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setDeleteItem(null)}
+          >
+            <motion.div
+              onClick={(e) => e.stopPropagation()}
+              initial={{ y: 100 }}
+              animate={{ y: 0 }}
+              exit={{ y: 100 }}
+              className="bg-white rounded-t-3xl sm:rounded-3xl p-5 w-full sm:max-w-md space-y-4"
+            >
+              <h2 className="text-lg font-semibold text-red-600">
+                Delete Item
+              </h2>
+              <p className="text-sm text-gray-600">
+                Are you sure you want to delete{" "}
+                <strong>{deleteItem.name}</strong>? This action cannot be
+                undone.
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteItem(null)}
+                  className="flex-1 rounded-xl bg-gray-100 py-2"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="flex-1 rounded-xl bg-red-600 text-white py-2"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ---------------- EDIT / ADD MODAL (unchanged) ---------------- */}
       <AnimatePresence>
         {open && (
           <motion.div
@@ -271,10 +355,9 @@ export default function AdminItems() {
                 {editingItem ? "Edit Item" : "Add Item"}
               </h2>
 
-              {/* Image Upload */}
               <div
                 onClick={() => fileInputRef.current.click()}
-                className="rounded-xl bg-gray-100 h-40 flex flex-col items-center justify-center cursor-pointer text-gray-500"
+                className="rounded-xl bg-gray-100 h-40 flex items-center justify-center cursor-pointer text-gray-500"
               >
                 {preview ? (
                   <img
@@ -282,18 +365,15 @@ export default function AdminItems() {
                     className="w-full h-full object-cover rounded-xl"
                   />
                 ) : (
-                  <>
-                    <span className="text-2xl">📷</span>
-                    <span className="text-sm mt-1">Tap to add image</span>
-                  </>
+                  <span>📷 Tap to add image</span>
                 )}
               </div>
 
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
                 hidden
+                accept="image/*"
                 onChange={(e) => handleFileChange(e.target.files[0])}
               />
 
