@@ -1,6 +1,14 @@
 export default function MenuItemRow({ item, variantKeys }) {
   const { name, price, variants, description } = item;
 
+  console.log("🔎 VARIANTS KEYS FROM DB:", Object.keys(variants || {}));
+
+  console.log("🍽️ ROW:", {
+    name,
+    variants,
+    variantKeys,
+  });
+
   const displayVariants = {};
 
   if (variants) {

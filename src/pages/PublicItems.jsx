@@ -70,7 +70,15 @@ export default function PublicItems() {
         (a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999),
       );
 
-      setItems(sortedItems);
+      const normalizedItems = sortedItems.map((item) => ({
+        ...item,
+        variants:
+          typeof item.variants === "string"
+            ? JSON.parse(item.variants)
+            : item.variants,
+      }));
+
+      setItems(normalizedItems);
 
       // 3️⃣ Save to cache
       localStorage.setItem(
@@ -78,7 +86,7 @@ export default function PublicItems() {
         JSON.stringify({
           subcategory: sub,
           category: cat,
-          items: sortedItems,
+          items: normalizedItems,
           timestamp: Date.now(),
         }),
       );
@@ -97,6 +105,7 @@ export default function PublicItems() {
   const variantKeys = VARIANT_ORDER.filter((key) =>
     items.some((item) => item.variants && item.variants[key] !== undefined),
   );
+  console.log("📊 VARIANT KEYS:", variantKeys);
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto">

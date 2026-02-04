@@ -24,6 +24,7 @@ export default function AdminItems() {
   const [subcategoryId, setSubcategoryId] = useState("");
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
+  const [price, setPrice] = useState("");
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
 
@@ -45,22 +46,42 @@ export default function AdminItems() {
   }
 
   /* ---------------- LOAD ---------------- */
-  async function load() {
-    try {
-      const cached = JSON.parse(localStorage.getItem(CACHE_KEY));
-      if (cached && Date.now() - cached.timestamp < TTL_MINUTES * 60000) {
-        setCategories(cached.categories);
-        setSubcategories(cached.subcategories);
-        setItems(cached.items);
-        return;
-      }
-    } catch {}
+  async function load(force = false) {
+    console.log("🔄 load() called | force =", force);
 
-    const { data: cats } = await supabase.from("categories").select("id,name");
-    const { data: subs } = await supabase
+    if (!force) {
+      try {
+        const cached = JSON.parse(localStorage.getItem(CACHE_KEY));
+        if (cached && Date.now() - cached.timestamp < TTL_MINUTES * 60000) {
+          console.log("🟢 Using cached data");
+          setCategories(cached.categories);
+          setSubcategories(cached.subcategories);
+          setItems(cached.items);
+          return;
+        }
+      } catch (err) {
+        console.warn("🟡 Cache read failed", err);
+      }
+    }
+
+    console.log("🟡 Fetching fresh data from Supabase");
+
+    const { data: cats, error: catErr } = await supabase
+      .from("categories")
+      .select("id,name");
+
+    const { data: subs, error: subErr } = await supabase
       .from("subcategories")
       .select("id,name,category_id");
-    const { data: menu } = await supabase.from("menu_items").select("*");
+
+    const { data: menu, error: menuErr } = await supabase
+      .from("menu_items")
+      .select("*");
+
+    if (catErr || subErr || menuErr) {
+      console.error("🔴 Load error:", { catErr, subErr, menuErr });
+      return;
+    }
 
     setCategories(cats || []);
     setSubcategories(subs || []);
@@ -75,6 +96,8 @@ export default function AdminItems() {
         timestamp: Date.now(),
       }),
     );
+
+    console.log("🟢 Cache updated");
   }
 
   useEffect(() => {
@@ -108,6 +131,7 @@ export default function AdminItems() {
     setEditingItem(null);
     setName("");
     setDesc("");
+    setPrice("");
     setCategoryId("");
     setSubcategoryId("");
     setFile(null);
@@ -119,6 +143,7 @@ export default function AdminItems() {
     setEditingItem(item);
     setName(item.name);
     setDesc(item.description || "");
+    setPrice(item.price ?? "");
     setCategoryId(item.category_id);
     setSubcategoryId(item.subcategory_id);
     setPreview(item.image_url || null);
@@ -131,50 +156,106 @@ export default function AdminItems() {
     e.preventDefault();
     haptic("medium");
 
-    if (!name || !categoryId || !subcategoryId) {
-      toast.error("Name, category & subcategory required");
+    console.log("🟡 handleSave triggered");
+    console.log("Form values:", {
+      name,
+      desc,
+      price,
+      categoryId,
+      subcategoryId,
+      file,
+      editingItem,
+    });
+
+    if (!name || !price || !categoryId || !subcategoryId) {
+      console.warn("🔴 Missing required fields");
+      toast.error("Name, price, category & subcategory required");
       return;
     }
 
     let imageUrl = editingItem?.image_url || null;
 
+    /* ---------- IMAGE UPLOAD ---------- */
     if (file) {
-      const path = `${Date.now()}-${file.name}`;
-      await supabase.storage.from("menu-images").upload(path, file);
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("menu-images").getPublicUrl(path);
-      imageUrl = publicUrl;
+      try {
+        const path = `${Date.now()}-${file.name}`;
+        console.log("🟡 Uploading image:", path);
+
+        const { error: uploadError } = await supabase.storage
+          .from("menu-images")
+          .upload(path, file);
+
+        if (uploadError) {
+          console.error("🔴 Image upload failed:", uploadError);
+          toast.error("Image upload failed");
+          return;
+        }
+
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("menu-images").getPublicUrl(path);
+
+        imageUrl = publicUrl;
+        console.log("🟢 Image uploaded:", imageUrl);
+      } catch (err) {
+        console.error("🔴 Image upload exception:", err);
+        toast.error("Image upload crashed");
+        return;
+      }
     }
 
+    /* ---------- PAYLOAD ---------- */
+    const payload = {
+      name,
+      description: desc,
+      price: Number(price),
+      category_id: categoryId,
+      subcategory_id: subcategoryId,
+      image_url: imageUrl,
+    };
+
+    console.log("🟡 Supabase payload:", payload);
+
+    /* ---------- UPDATE ---------- */
     if (editingItem) {
-      await supabase
+      const { data, error } = await supabase
         .from("menu_items")
-        .update({
-          name,
-          description: desc,
-          category_id: categoryId,
-          subcategory_id: subcategoryId,
-          image_url: imageUrl,
-        })
-        .eq("id", editingItem.id);
+        .update(payload)
+        .eq("id", editingItem.id)
+        .select();
+
+      console.log("🟡 Update response:", { data, error });
+
+      if (error) {
+        console.error("🔴 Update failed:", error);
+        toast.error("Update failed");
+        return;
+      }
 
       toast.success("Item updated");
     } else {
-      await supabase.from("menu_items").insert({
-        name,
-        description: desc,
-        category_id: categoryId,
-        subcategory_id: subcategoryId,
-        image_url: imageUrl,
-      });
+      /* ---------- INSERT ---------- */
+      const { data, error } = await supabase
+        .from("menu_items")
+        .insert(payload)
+        .select();
+
+      console.log("🟡 Insert response:", { data, error });
+
+      if (error) {
+        console.error("🔴 Insert failed:", error);
+        toast.error(error.message || "Insert failed");
+        return;
+      }
 
       toast.success("Item added");
     }
 
+    console.log("🟢 Save completed successfully");
+
     setOpen(false);
     localStorage.removeItem(CACHE_KEY);
-    load();
+    load(true);
   }
 
   /* ---------------- DELETE ---------------- */
@@ -188,12 +269,34 @@ export default function AdminItems() {
 
     setDeleteItem(null);
     localStorage.removeItem(CACHE_KEY);
-    load();
+    load(true);
   }
 
   const filteredSubs = subcategories.filter(
     (s) => s.category_id === categoryId,
   );
+
+  /* ---------------- REALTIME SUBSCRIPTION ---------------- */
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("menu-items-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "menu_items" },
+        (payload) => {
+          console.log("🟢 Realtime DB change:", payload.eventType);
+
+          localStorage.removeItem(CACHE_KEY);
+          load(true); // 👈 FORCE fresh fetch
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   /* ---------------- UI ---------------- */
   return (
@@ -211,7 +314,11 @@ export default function AdminItems() {
             haptic("medium");
             openAddModal();
           }}
-          className="rounded-full bg-black text-white px-4 py-2 text-sm shadow-md"
+          className="rounded-full border px-4 py-2 text-sm shadow-md"
+          style={{
+            borderColor: "var(--brand-primary)",
+            color: "var(--brand-primary)",
+          }}
         >
           + Add Item
         </button>
@@ -247,6 +354,14 @@ export default function AdminItems() {
               <div>
                 <h3 className="font-semibold">{item.name}</h3>
                 <p className="text-sm text-gray-500">{item.description}</p>
+                <p
+                  className="text-sm font-bold"
+                  style={{
+                    color: "var(--brand-primary)",
+                  }}
+                >
+                  KES {item.price?.toLocaleString()}
+                </p>
               </div>
             </div>
 
@@ -384,6 +499,14 @@ export default function AdminItems() {
                 onChange={(e) => setName(e.target.value)}
               />
 
+              <input
+                type="number"
+                className="w-full rounded-xl bg-gray-100 px-4 py-2"
+                placeholder="Price (KES)"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+              />
+
               <textarea
                 className="w-full rounded-xl bg-gray-100 px-4 py-2"
                 placeholder="Description"
@@ -421,7 +544,13 @@ export default function AdminItems() {
                 ))}
               </select>
 
-              <button className="w-full bg-black text-white rounded-xl py-2">
+              <button
+                className="w-full border rounded-xl py-2"
+                style={{
+                  borderColor: "var(--brand-primary)",
+                  color: "var(--brand-primary)",
+                }}
+              >
                 Save
               </button>
             </motion.form>

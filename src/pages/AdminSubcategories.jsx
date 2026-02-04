@@ -15,27 +15,31 @@ export default function AdminSubcategories() {
   const CACHE_KEY = `admin_subcategories_${categoryId}`;
   const TTL_MINUTES = 10;
 
-  async function load() {
-    // 1️⃣ Cache first
-    try {
-      const cachedRaw = localStorage.getItem(CACHE_KEY);
-      if (cachedRaw) {
-        const cached = JSON.parse(cachedRaw);
-        const age = Date.now() - cached.timestamp;
+  /* ---------------- LOAD ---------------- */
+  async function load(force = false) {
+    console.log("🔄 load() subcategories | force =", force);
 
-        if (age < TTL_MINUTES * 60 * 1000) {
-          setCategory(cached.category);
-          setSubcategories(cached.subcategories);
-          return;
-        } else {
-          localStorage.removeItem(CACHE_KEY);
+    if (!force) {
+      try {
+        const cachedRaw = localStorage.getItem(CACHE_KEY);
+        if (cachedRaw) {
+          const cached = JSON.parse(cachedRaw);
+          const age = Date.now() - cached.timestamp;
+
+          if (age < TTL_MINUTES * 60 * 1000) {
+            console.log("🟢 Using cached subcategories");
+            setCategory(cached.category);
+            setSubcategories(cached.subcategories);
+            return;
+          }
         }
+      } catch (err) {
+        console.warn("🟡 Cache read failed", err);
       }
-    } catch {
-      localStorage.removeItem(CACHE_KEY);
     }
 
-    // 2️⃣ Fetch fresh
+    console.log("🟡 Fetching fresh subcategories from Supabase");
+
     const { data: cat, error: catErr } = await supabase
       .from("categories")
       .select("*")
@@ -43,6 +47,7 @@ export default function AdminSubcategories() {
       .single();
 
     if (catErr) {
+      console.error("🔴 Category load failed:", catErr);
       toast.error("Failed to load category");
       return;
     }
@@ -54,6 +59,7 @@ export default function AdminSubcategories() {
       .order("sort_order", { ascending: true });
 
     if (subErr) {
+      console.error("🔴 Subcategories load failed:", subErr);
       toast.error("Failed to load subcategories");
       return;
     }
@@ -70,10 +76,14 @@ export default function AdminSubcategories() {
         timestamp: Date.now(),
       }),
     );
+
+    console.log("🟢 Subcategories cache updated");
   }
 
+  /* ---------------- ADD ---------------- */
   async function addSubcategory(e) {
     e.preventDefault();
+
     if (!newName.trim()) {
       toast.error("Subcategory name is required");
       return;
@@ -94,9 +104,10 @@ export default function AdminSubcategories() {
     setNewName("");
     setNewSort("");
     localStorage.removeItem(CACHE_KEY);
-    load();
+    load(true); // 👈 force refresh
   }
 
+  /* ---------------- UPDATE ---------------- */
   async function updateField(id, field, value) {
     const { error } = await supabase
       .from("subcategories")
@@ -110,9 +121,10 @@ export default function AdminSubcategories() {
 
     toast.success("Subcategory updated");
     localStorage.removeItem(CACHE_KEY);
-    load();
+    load(true); // 👈 force refresh
   }
 
+  /* ---------------- DELETE ---------------- */
   async function deleteSubcategory(id) {
     if (!confirm("Delete this subcategory?")) return;
 
@@ -128,13 +140,40 @@ export default function AdminSubcategories() {
 
     toast.success("Subcategory deleted");
     localStorage.removeItem(CACHE_KEY);
-    load();
+    load(true); // 👈 force refresh
   }
 
+  /* ---------------- REALTIME ---------------- */
+  useEffect(() => {
+    const channel = supabase
+      .channel(`subcategory-changes-${categoryId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "subcategories",
+          filter: `category_id=eq.${categoryId}`,
+        },
+        (payload) => {
+          console.log("🟢 Realtime subcategory change:", payload.eventType);
+          localStorage.removeItem(CACHE_KEY);
+          load(true);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [categoryId]);
+
+  /* ---------------- INITIAL LOAD ---------------- */
   useEffect(() => {
     load();
   }, [categoryId]);
 
+  /* ---------------- UI ---------------- */
   return (
     <div className="space-y-6 max-w-xl mx-auto">
       <BackButton />
@@ -209,7 +248,11 @@ export default function AdminSubcategories() {
                 type="number"
                 defaultValue={sub.sort_order}
                 onBlur={(e) =>
-                  updateField(sub.id, "sort_order", parseInt(e.target.value))
+                  updateField(
+                    sub.id,
+                    "sort_order",
+                    e.target.value ? parseInt(e.target.value) : null,
+                  )
                 }
               />
               <button

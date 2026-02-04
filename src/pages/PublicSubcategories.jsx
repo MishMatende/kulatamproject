@@ -13,6 +13,111 @@ export default function PublicSubcategories() {
   const [subcategories, setSubcategories] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const CACHE_KEY = `public_category_${categoryId}`;
+  const TTL_MINUTES = 15;
+
+  /* ---------------- LOAD ---------------- */
+  async function load(force = false) {
+    console.log("🔄 load() public subcategories | force =", force);
+    setLoading(true);
+
+    if (!force) {
+      try {
+        const cachedRaw = localStorage.getItem(CACHE_KEY);
+        if (cachedRaw) {
+          const cached = JSON.parse(cachedRaw);
+          const age = Date.now() - cached.timestamp;
+
+          if (age < TTL_MINUTES * 60 * 1000) {
+            console.log("🟢 Using cached public subcategories");
+            setCategory(cached.category);
+            setSubcategories(cached.subcategories);
+            setLoading(false);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn("🟡 Cache read failed", err);
+      }
+    }
+
+    console.log("🟡 Fetching fresh public subcategories");
+
+    const { data: cat, error: catErr } = await supabase
+      .from("categories")
+      .select("id, name")
+      .eq("id", categoryId)
+      .single();
+
+    if (catErr) {
+      console.error("🔴 Category fetch failed:", catErr);
+      setLoading(false);
+      return;
+    }
+
+    const { data: subs, error: subErr } = await supabase
+      .from("subcategories")
+      .select("*")
+      .eq("category_id", categoryId)
+      .order("sort_order", { ascending: true });
+
+    if (subErr) {
+      console.error("🔴 Subcategories fetch failed:", subErr);
+      setLoading(false);
+      return;
+    }
+
+    setCategory(cat);
+    setSubcategories(subs || []);
+
+    localStorage.setItem(
+      CACHE_KEY,
+      JSON.stringify({
+        category: cat,
+        subcategories: subs || [],
+        timestamp: Date.now(),
+      }),
+    );
+
+    console.log("🟢 Public subcategories cache updated");
+    setLoading(false);
+  }
+
+  /* ---------------- REALTIME ---------------- */
+  useEffect(() => {
+    const channel = supabase
+      .channel(`public-subcategory-changes-${categoryId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "subcategories",
+          filter: `category_id=eq.${categoryId}`,
+        },
+        (payload) => {
+          console.log(
+            "🟢 Realtime public subcategory change:",
+            payload.eventType,
+          );
+          localStorage.removeItem(CACHE_KEY);
+          load(true);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [categoryId]);
+
+  /* ---------------- INITIAL LOAD ---------------- */
+  useEffect(() => {
+    load();
+  }, [categoryId]);
+
+  /* ---------------- UI ---------------- */
+
   // Subcategory image mapping
   const subcategoryImages = {
     Smoothies: "/subcategory-images/Smoothies.jpeg",
@@ -61,69 +166,7 @@ export default function PublicSubcategories() {
     },
   };
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-
-      const CACHE_KEY = `public_category_${categoryId}`;
-      const TTL_MINUTES = 15;
-
-      // 1️⃣ Try cache first
-      try {
-        const cachedRaw = localStorage.getItem(CACHE_KEY);
-        if (cachedRaw) {
-          const cached = JSON.parse(cachedRaw);
-          const age = Date.now() - cached.timestamp;
-
-          if (age < TTL_MINUTES * 60 * 1000) {
-            setCategory(cached.category);
-            setSubcategories(cached.subcategories);
-            setLoading(false);
-            return;
-          } else {
-            localStorage.removeItem(CACHE_KEY);
-          }
-        }
-      } catch {
-        localStorage.removeItem(CACHE_KEY);
-      }
-
-      // 2️⃣ Fetch from Supabase
-      const { data: cat } = await supabase
-        .from("categories")
-        .select("id, name")
-        .eq("id", categoryId)
-        .single();
-
-      const { data: subs } = await supabase
-        .from("subcategories")
-        .select("*")
-        .eq("category_id", categoryId)
-        .order("sort_order", { ascending: true });
-
-      setCategory(cat);
-      setSubcategories(subs || []);
-
-      // 3️⃣ Save to cache
-      localStorage.setItem(
-        CACHE_KEY,
-        JSON.stringify({
-          category: cat,
-          subcategories: subs || [],
-          timestamp: Date.now(),
-        }),
-      );
-
-      setLoading(false);
-    }
-
-    load();
-  }, [categoryId]);
-
-  // 🔄 Loading state
-  if (loading) {
-    return <LoadingScreen />;
-  }
+  if (loading) return <LoadingScreen />;
 
   return (
     <div className="p-6 space-y-4">

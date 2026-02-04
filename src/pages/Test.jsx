@@ -115,9 +115,12 @@ export default function PublicMenu() {
         Menu
       </h1>
 
+      {loading && <p className="text-sm text-gray-400 mb-4">Updating menu…</p>}
+
       {data.map((cat) => (
         <div key={cat.id} className="mb-8">
           <h2 className="text-2xl font-semibold mb-3">{cat.name}</h2>
+
           <ul className="space-y-1">
             {cat.menu_items?.map((item) => (
               <li key={item.id} className="flex justify-between border-b py-1">

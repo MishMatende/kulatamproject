@@ -11,32 +11,37 @@ export default function AdminCategories() {
   const CACHE_KEY = "admin_categories";
   const TTL_MINUTES = 10;
 
-  async function load() {
-    // 1️⃣ Cache first
-    try {
-      const cachedRaw = localStorage.getItem(CACHE_KEY);
-      if (cachedRaw) {
-        const cached = JSON.parse(cachedRaw);
-        const age = Date.now() - cached.timestamp;
+  /* ---------------- LOAD ---------------- */
+  async function load(force = false) {
+    console.log("🔄 load() categories | force =", force);
 
-        if (age < TTL_MINUTES * 60 * 1000) {
-          setCategories(cached.categories);
-          return;
-        } else {
-          localStorage.removeItem(CACHE_KEY);
+    if (!force) {
+      try {
+        const cachedRaw = localStorage.getItem(CACHE_KEY);
+        if (cachedRaw) {
+          const cached = JSON.parse(cachedRaw);
+          const age = Date.now() - cached.timestamp;
+
+          if (age < TTL_MINUTES * 60 * 1000) {
+            console.log("🟢 Using cached categories");
+            setCategories(cached.categories);
+            return;
+          }
         }
+      } catch (err) {
+        console.warn("🟡 Cache read failed", err);
       }
-    } catch {
-      localStorage.removeItem(CACHE_KEY);
     }
 
-    // 2️⃣ Fetch
+    console.log("🟡 Fetching fresh categories from Supabase");
+
     const { data, error } = await supabase
       .from("categories")
       .select("*")
       .order("sort_order", { ascending: true });
 
     if (error) {
+      console.error("🔴 Categories load failed:", error);
       toast.error("Failed to load categories");
       return;
     }
@@ -51,10 +56,14 @@ export default function AdminCategories() {
         timestamp: Date.now(),
       }),
     );
+
+    console.log("🟢 Categories cache updated");
   }
 
+  /* ---------------- ADD ---------------- */
   async function addCategory(e) {
     e.preventDefault();
+
     if (!newName.trim()) return;
 
     const { error } = await supabase
@@ -69,9 +78,10 @@ export default function AdminCategories() {
     toast.success("Category added");
     setNewName("");
     localStorage.removeItem(CACHE_KEY);
-    load();
+    load(true); // 👈 force refresh
   }
 
+  /* ---------------- UPDATE ---------------- */
   async function updateCategory(id, name) {
     if (!name.trim()) {
       toast.error("Name cannot be empty");
@@ -90,9 +100,10 @@ export default function AdminCategories() {
 
     toast.success("Category updated");
     localStorage.removeItem(CACHE_KEY);
-    load();
+    load(true); // 👈 force refresh
   }
 
+  /* ---------------- DELETE ---------------- */
   async function deleteCategory(id) {
     if (!confirm("Delete this category?")) return;
 
@@ -105,13 +116,35 @@ export default function AdminCategories() {
 
     toast.success("Category deleted");
     localStorage.removeItem(CACHE_KEY);
-    load();
+    load(true); // 👈 force refresh
   }
 
+  /* ---------------- REALTIME ---------------- */
+  useEffect(() => {
+    const channel = supabase
+      .channel("category-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "categories" },
+        (payload) => {
+          console.log("🟢 Realtime category change:", payload.eventType);
+          localStorage.removeItem(CACHE_KEY);
+          load(true);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  /* ---------------- INITIAL LOAD ---------------- */
   useEffect(() => {
     load();
   }, []);
 
+  /* ---------------- UI ---------------- */
   return (
     <div className="space-y-6 max-w-xl mx-auto">
       <BackButton />
