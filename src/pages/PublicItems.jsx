@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useParams } from "react-router-dom";
-import MenuItemRow from "../components/pagesMenuItemRow";
+import MenuItemRow from "../components/MenuItemRow";
 import BackButton from "../components/BackButton";
 import LoadingScreen from "../components/LoadingScreen";
 
