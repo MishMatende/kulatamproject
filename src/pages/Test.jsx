@@ -1,118 +1,65 @@
-import { useEffect, useState } from "react";
-import { supabase } from "../lib/supabase";
-import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { FiInstagram, FiPhone } from "react-icons/fi";
+import { FaTiktok } from "react-icons/fa";
+import { SiBolt } from "react-icons/si";
 
-export default function AdminDashboard() {
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    async function loadUser() {
-      const { data } = await supabase.auth.getUser();
-      setUser(data.user);
-    }
-
-    loadUser();
-  }, []);
-
-  const containerVariants = {
-    hidden: {},
-    show: {
-      transition: {
-        staggerChildren: 0.12,
-      },
-    },
-  };
-
-  const cardVariants = {
-    hidden: { opacity: 0, y: 20 },
-    show: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.35, ease: "easeOut" },
-    },
-  };
-
+export default function Footer() {
   return (
-    <div className="space-y-6">
-      {/* Welcome Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease: "easeOut" }}
-        className="rounded-2xl bg-gradient-to-r from-[var(--brand-bg-dark)] to-gray-800 p-5 text-white shadow-md"
-      >
-        <h1 className="text-xl font-semibold">
-          Welcome back{user?.email ? `, ${user.email}` : ""}
-        </h1>
-      </motion.div>
+    <footer className="w-full shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.1)]">
+      <div className="max-w-6xl mx-auto px-4 py-6 flex flex-col items-center gap-4 text-center">
+        {/* Bolt Food Link */}
+        <a
+          href="https://food.bolt.eu/en/p/188508-kt-cafe-restaurant/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-full border hover:bg-gray-50 transition"
+          style={{
+            borderColor: "var(--brand-primary)",
+            color: "var(--brand-primary)",
+          }}
+        >
+          <SiBolt size={18} />
+          <span>Order on Bolt Food</span>
+        </a>
 
-      {/* Action Cards */}
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="show"
-        className="grid grid-cols-1 gap-4"
-      >
-        {/* Categories */}
-        <motion.div variants={cardVariants}>
-          <Link
-            to="/admin/categories"
-            className="block rounded-2xl bg-white p-5 shadow-sm border border-gray-200
-                       active:scale-[0.97] transition"
-          >
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center text-xl">
-                📂
-              </div>
-              <div>
-                <h2 className="font-semibold">Categories</h2>
-                <p className="text-sm text-gray-500">Manage menu categories</p>
-              </div>
-            </div>
-          </Link>
-        </motion.div>
+        <p style={{ color: "var(--brand-bg-dark)" }} className="text-sm">
+          © {new Date().getFullYear()} KT Cafe. All rights reserved.
+        </p>
 
-        {/* Menu Items */}
-        <motion.div variants={cardVariants}>
-          <Link
-            to="/admin/items"
-            className="block rounded-2xl bg-white p-5 shadow-sm border border-gray-200
-                       active:scale-[0.97] transition"
+        <div className="flex gap-3">
+          <a
+            href="https://www.instagram.com/kulatam_/"
+            className="p-2 rounded-full border"
+            style={{
+              borderColor: "var(--brand-primary)",
+              color: "var(--brand-primary)",
+            }}
           >
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-xl bg-green-100 text-green-600 flex items-center justify-center text-xl">
-                🍽️
-              </div>
-              <div>
-                <h2 className="font-semibold">Menu Items</h2>
-                <p className="text-sm text-gray-500">Add and edit menu items</p>
-              </div>
-            </div>
-          </Link>
-        </motion.div>
+            <FiInstagram size={16} />
+          </a>
 
-        {/* Posters */}
-        <motion.div variants={cardVariants}>
-          <Link
-            to="/admin/posters"
-            className="block rounded-2xl bg-white p-5 shadow-sm border border-gray-200
-                       active:scale-[0.97] transition"
+          <a
+            href="https://www.tiktok.com/@kulatam_?_r=1&_t=ZS-93VgTSXig44"
+            className="p-2 rounded-full border"
+            style={{
+              borderColor: "var(--brand-primary)",
+              color: "var(--brand-primary)",
+            }}
           >
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-xl">
-                🖼️
-              </div>
-              <div>
-                <h2 className="font-semibold">Poster</h2>
-                <p className="text-sm text-gray-500">
-                  Manage popup poster for clients
-                </p>
-              </div>
-            </div>
-          </Link>
-        </motion.div>
-      </motion.div>
-    </div>
+            <FaTiktok size={16} />
+          </a>
+
+          <a
+            href="tel:+254100931818"
+            className="p-2 rounded-full border"
+            style={{
+              borderColor: "var(--brand-primary)",
+              color: "var(--brand-primary)",
+            }}
+          >
+            <FiPhone size={16} />
+          </a>
+        </div>
+      </div>
+    </footer>
   );
 }

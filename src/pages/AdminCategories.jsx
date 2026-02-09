@@ -3,10 +3,14 @@ import { supabase } from "../lib/supabase";
 import { Link } from "react-router-dom";
 import BackButton from "../components/BackButton";
 import toast from "react-hot-toast";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function AdminCategories() {
   const [categories, setCategories] = useState([]);
   const [newName, setNewName] = useState("");
+
+  // Delete modal state
+  const [deleteCat, setDeleteCat] = useState(null);
 
   const CACHE_KEY = "admin_categories";
   const TTL_MINUTES = 10;
@@ -104,17 +108,22 @@ export default function AdminCategories() {
   }
 
   /* ---------------- DELETE ---------------- */
-  async function deleteCategory(id) {
-    if (!confirm("Delete this category?")) return;
+  async function confirmDelete() {
+    if (!deleteCat) return;
 
-    const { error } = await supabase.from("categories").delete().eq("id", id);
+    const { error } = await supabase
+      .from("categories")
+      .delete()
+      .eq("id", deleteCat.id);
 
     if (error) {
+      console.error("🔴 Delete failed:", error);
       toast.error("Failed to delete category");
       return;
     }
 
     toast.success("Category deleted");
+    setDeleteCat(null);
     localStorage.removeItem(CACHE_KEY);
     load(true); // 👈 force refresh
   }
@@ -212,7 +221,7 @@ export default function AdminCategories() {
               </Link>
 
               <button
-                onClick={() => deleteCategory(cat.id)}
+                onClick={() => setDeleteCat(cat)}
                 className="text-sm font-medium text-red-600"
               >
                 Delete
@@ -221,6 +230,52 @@ export default function AdminCategories() {
           </div>
         ))}
       </div>
+
+      {/* ---------------- DELETE CONFIRM MODAL ---------------- */}
+      <AnimatePresence>
+        {deleteCat && (
+          <motion.div
+            className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setDeleteCat(null)}
+          >
+            <motion.div
+              onClick={(e) => e.stopPropagation()}
+              initial={{ y: 100 }}
+              animate={{ y: 0 }}
+              exit={{ y: 100 }}
+              className="bg-white rounded-t-3xl sm:rounded-3xl p-5 w-full sm:max-w-md space-y-4"
+            >
+              <h2 className="text-lg font-semibold text-red-600">
+                Delete Category
+              </h2>
+
+              <p className="text-sm text-gray-600">
+                Are you sure you want to delete{" "}
+                <strong>{deleteCat.name}</strong>? This action cannot be undone.
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteCat(null)}
+                  className="flex-1 rounded-xl bg-gray-100 py-2"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={confirmDelete}
+                  className="flex-1 rounded-xl bg-red-600 text-white py-2"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

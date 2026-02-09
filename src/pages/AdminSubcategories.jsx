@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { useParams, Link } from "react-router-dom";
 import BackButton from "../components/BackButton";
 import toast from "react-hot-toast";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function AdminSubcategories() {
   const { categoryId } = useParams();
@@ -11,6 +12,9 @@ export default function AdminSubcategories() {
   const [subcategories, setSubcategories] = useState([]);
   const [newName, setNewName] = useState("");
   const [newSort, setNewSort] = useState("");
+
+  // Delete modal state
+  const [deleteSub, setDeleteSub] = useState(null);
 
   const CACHE_KEY = `admin_subcategories_${categoryId}`;
   const TTL_MINUTES = 10;
@@ -125,20 +129,22 @@ export default function AdminSubcategories() {
   }
 
   /* ---------------- DELETE ---------------- */
-  async function deleteSubcategory(id) {
-    if (!confirm("Delete this subcategory?")) return;
+  async function confirmDelete() {
+    if (!deleteSub) return;
 
     const { error } = await supabase
       .from("subcategories")
       .delete()
-      .eq("id", id);
+      .eq("id", deleteSub.id);
 
     if (error) {
+      console.error("🔴 Delete failed:", error);
       toast.error("Failed to delete subcategory");
       return;
     }
 
     toast.success("Subcategory deleted");
+    setDeleteSub(null);
     localStorage.removeItem(CACHE_KEY);
     load(true); // 👈 force refresh
   }
@@ -256,7 +262,7 @@ export default function AdminSubcategories() {
                 }
               />
               <button
-                onClick={() => deleteSubcategory(sub.id)}
+                onClick={() => setDeleteSub(sub)}
                 className="text-sm font-medium text-red-600"
               >
                 Delete
@@ -271,6 +277,52 @@ export default function AdminSubcategories() {
           </p>
         )}
       </div>
+
+      {/* ---------------- DELETE CONFIRM MODAL ---------------- */}
+      <AnimatePresence>
+        {deleteSub && (
+          <motion.div
+            className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setDeleteSub(null)}
+          >
+            <motion.div
+              onClick={(e) => e.stopPropagation()}
+              initial={{ y: 100 }}
+              animate={{ y: 0 }}
+              exit={{ y: 100 }}
+              className="bg-white rounded-t-3xl sm:rounded-3xl p-5 w-full sm:max-w-md space-y-4"
+            >
+              <h2 className="text-lg font-semibold text-red-600">
+                Delete Subcategory
+              </h2>
+
+              <p className="text-sm text-gray-600">
+                Are you sure you want to delete{" "}
+                <strong>{deleteSub.name}</strong>? This action cannot be undone.
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeleteSub(null)}
+                  className="flex-1 rounded-xl bg-gray-100 py-2"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={confirmDelete}
+                  className="flex-1 rounded-xl bg-red-600 text-white py-2"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
