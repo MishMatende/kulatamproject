@@ -52,6 +52,7 @@ export default function AdminDashboard() {
         animate="show"
         className="grid grid-cols-1 gap-4"
       >
+        {/* Categories */}
         <motion.div variants={cardVariants}>
           <Link
             to="/admin/categories"
@@ -70,6 +71,7 @@ export default function AdminDashboard() {
           </Link>
         </motion.div>
 
+        {/* Menu Items */}
         <motion.div variants={cardVariants}>
           <Link
             to="/admin/items"
@@ -83,6 +85,27 @@ export default function AdminDashboard() {
               <div>
                 <h2 className="font-semibold">Menu Items</h2>
                 <p className="text-sm text-gray-500">Add and edit menu items</p>
+              </div>
+            </div>
+          </Link>
+        </motion.div>
+
+        {/* Posters */}
+        <motion.div variants={cardVariants}>
+          <Link
+            to="/admin/posters"
+            className="block rounded-2xl bg-white p-5 shadow-sm border border-gray-200
+                       active:scale-[0.97] transition"
+          >
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center text-xl">
+                🖼️
+              </div>
+              <div>
+                <h2 className="font-semibold">Poster</h2>
+                <p className="text-sm text-gray-500">
+                  Manage popup poster for clients
+                </p>
               </div>
             </div>
           </Link>

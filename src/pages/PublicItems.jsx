@@ -209,7 +209,7 @@ export default function PublicItems() {
 
         {/* VARIANT LABEL ROW */}
         {variantKeys.length > 0 && (
-          <div className="flex justify-end gap-6 text-xs text-gray-500 py-1 border-b border-gray-100">
+          <div className="flex justify-end gap-6 text-xs text-gray-500 py-1 border-b border-gray-100 font-bold">
             {variantKeys.map((key) => (
               <span key={key}>{key}</span>
             ))}

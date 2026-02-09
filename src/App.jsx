@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import LoadingScreen from "./components/LoadingScreen";
 import AdminLayout from "./layouts/AdminLayout";
 import ResetPassword from "./pages/ResetPassword";
+import AdminPoster from "./pages/AdminPoster";
 
 export default function App() {
   const [loading, setLoading] = useState(true);
@@ -47,6 +48,8 @@ export default function App() {
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/categories" element={<AdminCategories />} />
         <Route path="/admin/items" element={<AdminItems />} />
+        <Route path="/admin/posters" element={<AdminPoster />} />
+
         <Route
           path="/admin/categories/:categoryId/subcategories"
           element={<AdminSubcategories />}
