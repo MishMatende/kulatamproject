@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { Link } from "react-router-dom";
 import BackButton from "../components/BackButton";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
+import { FiImage, FiTrash2 } from "react-icons/fi";
 
 export default function AdminCategories() {
   const [categories, setCategories] = useState([]);
@@ -11,6 +12,10 @@ export default function AdminCategories() {
 
   // Delete modal state
   const [deleteCat, setDeleteCat] = useState(null);
+
+  // Image upload state
+  const [uploadingId, setUploadingId] = useState(null);
+  const fileInputRef = useRef(null);
 
   const CACHE_KEY = "admin_categories";
   const TTL_MINUTES = 10;
@@ -104,7 +109,73 @@ export default function AdminCategories() {
 
     toast.success("Category updated");
     localStorage.removeItem(CACHE_KEY);
-    load(true); // 👈 force refresh
+    load(true);
+  }
+
+  /* ---------------- IMAGE UPLOAD ---------------- */
+  async function uploadCategoryImage(categoryId, file) {
+    if (!file) return;
+
+    setUploadingId(categoryId);
+
+    try {
+      const path = `${categoryId}/${Date.now()}-${file.name}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("category-images")
+        .upload(path, file, { upsert: true });
+
+      if (uploadError) {
+        console.error(uploadError);
+        toast.error("Upload failed");
+        setUploadingId(null);
+        return;
+      }
+
+      const { data } = supabase.storage
+        .from("category-images")
+        .getPublicUrl(path);
+
+      const imageUrl = data.publicUrl;
+
+      const { error: updateErr } = await supabase
+        .from("categories")
+        .update({ image_url: imageUrl })
+        .eq("id", categoryId);
+
+      if (updateErr) {
+        console.error(updateErr);
+        toast.error("Failed to save image URL");
+        setUploadingId(null);
+        return;
+      }
+
+      toast.success("Category image updated");
+      localStorage.removeItem(CACHE_KEY);
+      load(true);
+    } catch (err) {
+      console.error(err);
+      toast.error("Something went wrong");
+    }
+
+    setUploadingId(null);
+  }
+
+  /* ---------------- REMOVE IMAGE ---------------- */
+  async function removeCategoryImage(categoryId) {
+    const { error } = await supabase
+      .from("categories")
+      .update({ image_url: null })
+      .eq("id", categoryId);
+
+    if (error) {
+      toast.error("Failed to remove image");
+      return;
+    }
+
+    toast.success("Category image removed");
+    localStorage.removeItem(CACHE_KEY);
+    load(true);
   }
 
   /* ---------------- DELETE ---------------- */
@@ -203,8 +274,23 @@ export default function AdminCategories() {
         {categories.map((cat) => (
           <div
             key={cat.id}
-            className="rounded-2xl bg-white p-4 shadow-sm border border-gray-200"
+            className="rounded-2xl bg-white p-4 shadow-sm border border-gray-200 space-y-3"
           >
+            {/* IMAGE PREVIEW */}
+            <div className="w-full h-28 rounded-xl bg-gray-100 overflow-hidden relative">
+              {cat.image_url ? (
+                <img
+                  src={cat.image_url}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">
+                  No image uploaded
+                </div>
+              )}
+            </div>
+
+            {/* INPUT + ACTIONS */}
             <div className="flex items-center gap-2">
               <input
                 className="flex-1 rounded-xl border border-gray-300 px-3 py-2 text-sm
@@ -226,6 +312,39 @@ export default function AdminCategories() {
               >
                 Delete
               </button>
+            </div>
+
+            {/* IMAGE BUTTONS */}
+            <div className="flex gap-2">
+              <label
+                className="flex-1 flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-sm cursor-pointer
+                           hover:bg-gray-50 transition"
+                style={{
+                  borderColor: "var(--brand-primary)",
+                  color: "var(--brand-primary)",
+                }}
+              >
+                <FiImage size={16} />
+                {uploadingId === cat.id ? "Uploading..." : "Upload Image"}
+
+                <input
+                  type="file"
+                  hidden
+                  accept="image/*"
+                  onChange={(e) =>
+                    uploadCategoryImage(cat.id, e.target.files?.[0])
+                  }
+                />
+              </label>
+
+              {cat.image_url && (
+                <button
+                  onClick={() => removeCategoryImage(cat.id)}
+                  className="px-4 py-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 transition"
+                >
+                  <FiTrash2 size={16} />
+                </button>
+              )}
             </div>
           </div>
         ))}

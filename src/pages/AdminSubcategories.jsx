@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { useParams, Link } from "react-router-dom";
 import BackButton from "../components/BackButton";
@@ -15,6 +15,11 @@ export default function AdminSubcategories() {
 
   // Delete modal state
   const [deleteSub, setDeleteSub] = useState(null);
+
+  // Uploading state
+  const [uploadingId, setUploadingId] = useState(null);
+
+  const fileInputRefs = useRef({});
 
   const CACHE_KEY = `admin_subcategories_${categoryId}`;
   const TTL_MINUTES = 10;
@@ -125,7 +130,57 @@ export default function AdminSubcategories() {
 
     toast.success("Subcategory updated");
     localStorage.removeItem(CACHE_KEY);
-    load(true); // 👈 force refresh
+    load(true);
+  }
+
+  /* ---------------- UPLOAD IMAGE ---------------- */
+  async function uploadImage(sub, file) {
+    if (!file) return;
+
+    try {
+      setUploadingId(sub.id);
+
+      const fileExt = file.name.split(".").pop();
+      const filePath = `subcategories/${sub.id}-${Date.now()}.${fileExt}`;
+
+      console.log("🟡 Uploading subcategory image:", filePath);
+
+      const { error: uploadErr } = await supabase.storage
+        .from("category-images")
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadErr) {
+        console.error("🔴 Upload failed:", uploadErr);
+        toast.error("Image upload failed");
+        return;
+      }
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("category-images").getPublicUrl(filePath);
+
+      console.log("🟢 Uploaded image URL:", publicUrl);
+
+      const { error: updateErr } = await supabase
+        .from("subcategories")
+        .update({ image_url: publicUrl })
+        .eq("id", sub.id);
+
+      if (updateErr) {
+        console.error("🔴 DB update failed:", updateErr);
+        toast.error("Failed to save image");
+        return;
+      }
+
+      toast.success("Image updated");
+      localStorage.removeItem(CACHE_KEY);
+      load(true);
+    } catch (err) {
+      console.error("🔴 Upload crash:", err);
+      toast.error("Upload crashed");
+    } finally {
+      setUploadingId(null);
+    }
   }
 
   /* ---------------- DELETE ---------------- */
@@ -146,7 +201,7 @@ export default function AdminSubcategories() {
     toast.success("Subcategory deleted");
     setDeleteSub(null);
     localStorage.removeItem(CACHE_KEY);
-    load(true); // 👈 force refresh
+    load(true);
   }
 
   /* ---------------- REALTIME ---------------- */
@@ -229,8 +284,8 @@ export default function AdminSubcategories() {
         }}
       >
         <p className="text-sm">
-          You can edit the name and sort order directly. Changes save when you
-          leave the field.
+          You can edit the name and sort order directly. Upload an image for
+          each subcategory to replace the static background.
         </p>
       </div>
 
@@ -239,8 +294,22 @@ export default function AdminSubcategories() {
         {subcategories.map((sub) => (
           <div
             key={sub.id}
-            className="rounded-2xl bg-white p-4 shadow-sm border border-gray-200"
+            className="rounded-2xl bg-white p-4 shadow-sm border border-gray-200 space-y-3"
           >
+            {/* Image Preview */}
+            <div className="rounded-xl bg-gray-100 h-40 flex items-center justify-center overflow-hidden">
+              {sub.image_url ? (
+                <img
+                  src={sub.image_url}
+                  className="w-full h-full object-cover"
+                  alt={sub.name}
+                />
+              ) : (
+                <span className="text-sm text-gray-400">No image uploaded</span>
+              )}
+            </div>
+
+            {/* Inputs Row */}
             <div className="flex items-center gap-2">
               <input
                 className="flex-1 rounded-xl border border-gray-300 px-3 py-2 text-sm
@@ -261,11 +330,35 @@ export default function AdminSubcategories() {
                   )
                 }
               />
+
               <button
                 onClick={() => setDeleteSub(sub)}
                 className="text-sm font-medium text-red-600"
               >
                 Delete
+              </button>
+            </div>
+
+            {/* Upload Button */}
+            <div>
+              <input
+                type="file"
+                accept="image/*"
+                hidden
+                ref={(el) => (fileInputRefs.current[sub.id] = el)}
+                onChange={(e) => uploadImage(sub, e.target.files[0])}
+              />
+
+              <button
+                onClick={() => fileInputRefs.current[sub.id]?.click()}
+                disabled={uploadingId === sub.id}
+                className="w-full rounded-xl border py-2 flex items-center justify-center gap-2 text-sm font-medium"
+                style={{
+                  borderColor: "var(--brand-primary)",
+                  color: "var(--brand-primary)",
+                }}
+              >
+                {uploadingId === sub.id ? "Uploading..." : "Upload Image"}
               </button>
             </div>
           </div>

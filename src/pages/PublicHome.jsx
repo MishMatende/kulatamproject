@@ -209,9 +209,7 @@ export default function PublicHome() {
           animate="show"
         >
           {categories.map((cat) => {
-            const image =
-              categoryImages[cat.name.trim()] ||
-              "/category-images/default.jpeg";
+            const image = cat.image_url || "/category-images/default.jpeg";
 
             return (
               <motion.div
