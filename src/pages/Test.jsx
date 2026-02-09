@@ -1,18 +1,29 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { useParams } from "react-router-dom";
+import MenuItemRow from "../components/MenuItemRow";
+import BackButton from "../components/BackButton";
+import LoadingScreen from "../components/LoadingScreen";
 
-export default function PublicMenu() {
-  const [data, setData] = useState([]);
+export default function PublicItems() {
+  const { subcategoryId } = useParams();
+
+  const [subcategory, setSubcategory] = useState(null);
+  const [category, setCategory] = useState(null);
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const CACHE_KEY = "public_menu";
+  const VARIANT_ORDER = ["Single", "Double", "Triple", "Cup", "Teapot"];
+
+  const CACHE_KEY = `public_items_${subcategoryId}`;
   const TTL_MINUTES = 15;
 
   /* ---------------- LOAD ---------------- */
   async function load(force = false) {
-    console.log("🔄 load() public menu | force =", force);
+    console.log("🔄 load() public items | force =", force);
     setLoading(true);
 
+    // 1️⃣ Try cache first (unless forced)
     if (!force) {
       try {
         const cachedRaw = localStorage.getItem(CACHE_KEY);
@@ -21,8 +32,12 @@ export default function PublicMenu() {
           const age = Date.now() - cached.timestamp;
 
           if (age < TTL_MINUTES * 60 * 1000) {
-            console.log("🟢 Using cached public menu");
-            setData(cached.data);
+            console.log("🟢 Using cached public items");
+
+            setSubcategory(cached.subcategory);
+            setCategory(cached.category);
+            setItems(cached.items);
+
             setLoading(false);
             return;
           }
@@ -32,65 +47,97 @@ export default function PublicMenu() {
       }
     }
 
-    console.log("🟡 Fetching fresh public menu");
+    console.log("🟡 Fetching fresh items from Supabase");
 
-    const { data: categories, error } = await supabase
-      .from("categories")
-      .select(
-        `
-          id,
-          name,
-          sort_order,
-          menu_items (
-            id,
-            name,
-            price,
-            description
-          )
-        `,
-      )
-      .order("sort_order", { ascending: true });
+    // 2️⃣ Fetch subcategory
+    const { data: sub, error: subErr } = await supabase
+      .from("subcategories")
+      .select("*")
+      .eq("id", subcategoryId)
+      .single();
 
-    if (error) {
-      console.error("🔴 Public menu fetch failed:", error);
+    if (subErr) {
+      console.error("🔴 Failed to load subcategory:", subErr);
       setLoading(false);
       return;
     }
 
-    setData(categories || []);
+    setSubcategory(sub);
 
+    // 3️⃣ Fetch category
+    const { data: cat, error: catErr } = await supabase
+      .from("categories")
+      .select("*")
+      .eq("id", sub.category_id)
+      .single();
+
+    if (catErr) {
+      console.error("🔴 Failed to load category:", catErr);
+      setLoading(false);
+      return;
+    }
+
+    setCategory(cat);
+
+    // 4️⃣ Fetch items
+    const { data: its, error: itemErr } = await supabase
+      .from("menu_items")
+      .select("*")
+      .eq("subcategory_id", subcategoryId)
+      .order("sort_order", { ascending: true });
+
+    if (itemErr) {
+      console.error("🔴 Failed to load menu items:", itemErr);
+      setLoading(false);
+      return;
+    }
+
+    const sortedItems = (its || []).sort(
+      (a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999),
+    );
+
+    const normalizedItems = sortedItems.map((item) => ({
+      ...item,
+      variants:
+        typeof item.variants === "string"
+          ? JSON.parse(item.variants)
+          : item.variants,
+    }));
+
+    setItems(normalizedItems);
+
+    // 5️⃣ Save to cache
     localStorage.setItem(
       CACHE_KEY,
       JSON.stringify({
-        data: categories || [],
+        subcategory: sub,
+        category: cat,
+        items: normalizedItems,
         timestamp: Date.now(),
       }),
     );
 
-    console.log("🟢 Public menu cache updated");
+    console.log("🟢 Public items cache updated");
     setLoading(false);
   }
 
   /* ---------------- REALTIME ---------------- */
   useEffect(() => {
     const channel = supabase
-      .channel("public-menu-changes")
+      .channel(`public-items-changes-${subcategoryId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "categories" },
-        () => {
-          console.log("🟢 Realtime category change (menu)");
-          localStorage.removeItem(CACHE_KEY);
-          load(true);
+        {
+          event: "*",
+          schema: "public",
+          table: "menu_items",
+          filter: `subcategory_id=eq.${subcategoryId}`,
         },
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "menu_items" },
-        () => {
-          console.log("🟢 Realtime menu item change");
+        (payload) => {
+          console.log("🟢 Realtime menu_items change:", payload.eventType);
+
           localStorage.removeItem(CACHE_KEY);
-          load(true);
+          load(true); // 👈 force refresh
         },
       )
       .subscribe();
@@ -98,45 +145,63 @@ export default function PublicMenu() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [subcategoryId]);
 
   /* ---------------- INITIAL LOAD ---------------- */
   useEffect(() => {
     load();
-  }, []);
+  }, [subcategoryId]);
 
   /* ---------------- UI ---------------- */
+  if (loading) return <LoadingScreen />;
+
+  const variantKeys = VARIANT_ORDER.filter((key) =>
+    items.some((item) => item.variants && item.variants[key] !== undefined),
+  );
+
+  console.log("📊 VARIANT KEYS:", variantKeys);
+
   return (
-    <div className="p-6 max-w-3xl mx-auto">
+    <div className="p-4 md:p-6 max-w-3xl mx-auto">
+      <BackButton />
+
       <h1
-        className="text-3xl font-bold mb-6"
+        className="text-2xl font-semibold text-center mt-2 mb-4"
         style={{ color: "var(--brand-primary)" }}
       >
-        Menu
+        {subcategory?.name}
       </h1>
 
-      {loading && <p className="text-sm text-gray-400 mb-4">Updating menu…</p>}
-
-      {data.map((cat) => (
-        <div key={cat.id} className="mb-8">
-          <h2 className="text-2xl font-semibold mb-3">{cat.name}</h2>
-
-          <ul className="space-y-1">
-            {cat.menu_items?.map((item) => (
-              <li key={item.id} className="flex justify-between border-b py-1">
-                <span>{item.name}</span>
-                <span className="text-gray-600">
-                  {item.price?.toLocaleString()} KES
-                </span>
-              </li>
-            ))}
-
-            {(!cat.menu_items || cat.menu_items.length === 0) && (
-              <li className="text-sm text-gray-400">No items</li>
-            )}
-          </ul>
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <div className="flex justify-between text-sm font-semibold pb-2 border-b border-gray-200">
+          <span>Name</span>
+          <span>Price</span>
         </div>
-      ))}
+
+        {variantKeys.length > 0 && (
+          <div className="flex justify-end gap-6 text-xs text-gray-500 py-1 border-b border-gray-100">
+            {variantKeys.map((key) => (
+              <span key={key}>{key}</span>
+            ))}
+          </div>
+        )}
+
+        <div className="divide-y divide-gray-200">
+          {items.length > 0 ? (
+            items.map((item) => (
+              <MenuItemRow
+                key={item.id}
+                item={item}
+                variantKeys={variantKeys}
+              />
+            ))
+          ) : (
+            <p className="text-center text-gray-400 py-6 text-sm">
+              No items added yet.
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

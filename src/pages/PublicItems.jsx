@@ -15,14 +15,16 @@ export default function PublicItems() {
 
   const VARIANT_ORDER = ["Single", "Double", "Triple", "Cup", "Teapot"];
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
+  const CACHE_KEY = `public_items_${subcategoryId}`;
+  const TTL_MINUTES = 15;
 
-      const CACHE_KEY = `public_items_${subcategoryId}`;
-      const TTL_MINUTES = 15;
+  /* ---------------- LOAD ---------------- */
+  async function load(force = false) {
+    console.log("🔄 load() public items | force =", force);
+    setLoading(true);
 
-      // 1️⃣ Try cache first
+    // 1️⃣ Try cache first (unless forced)
+    if (!force) {
       try {
         const cachedRaw = localStorage.getItem(CACHE_KEY);
         if (cachedRaw) {
@@ -30,81 +32,135 @@ export default function PublicItems() {
           const age = Date.now() - cached.timestamp;
 
           if (age < TTL_MINUTES * 60 * 1000) {
+            console.log("🟢 Using cached public items");
+
             setSubcategory(cached.subcategory);
             setCategory(cached.category);
             setItems(cached.items);
+
             setLoading(false);
             return;
           } else {
             localStorage.removeItem(CACHE_KEY);
           }
         }
-      } catch {
-        localStorage.removeItem(CACHE_KEY);
+      } catch (err) {
+        console.warn("🟡 Cache read failed", err);
       }
-
-      // 2️⃣ Fetch from Supabase
-      const { data: sub } = await supabase
-        .from("subcategories")
-        .select("*")
-        .eq("id", subcategoryId)
-        .single();
-
-      setSubcategory(sub);
-
-      const { data: cat } = await supabase
-        .from("categories")
-        .select("*")
-        .eq("id", sub.category_id)
-        .single();
-
-      setCategory(cat);
-
-      const { data: its } = await supabase
-        .from("menu_items")
-        .select("*")
-        .eq("subcategory_id", subcategoryId)
-        .order("sort_order", { ascending: true });
-
-      const sortedItems = (its || []).sort(
-        (a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999),
-      );
-
-      const normalizedItems = sortedItems.map((item) => ({
-        ...item,
-        variants:
-          typeof item.variants === "string"
-            ? JSON.parse(item.variants)
-            : item.variants,
-      }));
-
-      setItems(normalizedItems);
-
-      // 3️⃣ Save to cache
-      localStorage.setItem(
-        CACHE_KEY,
-        JSON.stringify({
-          subcategory: sub,
-          category: cat,
-          items: normalizedItems,
-          timestamp: Date.now(),
-        }),
-      );
-
-      setLoading(false);
     }
 
+    console.log("🟡 Fetching fresh items from Supabase");
+
+    // 2️⃣ Fetch subcategory
+    const { data: sub, error: subErr } = await supabase
+      .from("subcategories")
+      .select("*")
+      .eq("id", subcategoryId)
+      .single();
+
+    if (subErr) {
+      console.error("🔴 Failed to load subcategory:", subErr);
+      setLoading(false);
+      return;
+    }
+
+    setSubcategory(sub);
+
+    // 3️⃣ Fetch category
+    const { data: cat, error: catErr } = await supabase
+      .from("categories")
+      .select("*")
+      .eq("id", sub.category_id)
+      .single();
+
+    if (catErr) {
+      console.error("🔴 Failed to load category:", catErr);
+      setLoading(false);
+      return;
+    }
+
+    setCategory(cat);
+
+    // 4️⃣ Fetch items
+    const { data: its, error: itemErr } = await supabase
+      .from("menu_items")
+      .select("*")
+      .eq("subcategory_id", subcategoryId)
+      .order("sort_order", { ascending: true });
+
+    if (itemErr) {
+      console.error("🔴 Failed to load menu items:", itemErr);
+      setLoading(false);
+      return;
+    }
+
+    const sortedItems = (its || []).sort(
+      (a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999),
+    );
+
+    const normalizedItems = sortedItems.map((item) => ({
+      ...item,
+      variants:
+        typeof item.variants === "string"
+          ? JSON.parse(item.variants)
+          : item.variants,
+    }));
+
+    setItems(normalizedItems);
+
+    // 3️⃣ Save to cache
+    localStorage.setItem(
+      CACHE_KEY,
+      JSON.stringify({
+        subcategory: sub,
+        category: cat,
+        items: normalizedItems,
+        timestamp: Date.now(),
+      }),
+    );
+
+    console.log("🟢 Public items cache updated");
+    setLoading(false);
+  }
+
+  /* ---------------- REALTIME ---------------- */
+  useEffect(() => {
+    const channel = supabase
+      .channel(`public-items-changes-${subcategoryId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "menu_items",
+          filter: `subcategory_id=eq.${subcategoryId}`,
+        },
+        (payload) => {
+          console.log("🟢 Realtime menu_items change:", payload.eventType);
+
+          localStorage.removeItem(CACHE_KEY);
+          load(true); // 👈 force refresh
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [subcategoryId]);
+
+  /* ---------------- INITIAL LOAD ---------------- */
+  useEffect(() => {
     load();
   }, [subcategoryId]);
 
-  // 🔄 Loading state
-  if (loading) {
-    return <LoadingScreen />;
-  }
+  /* ---------------- UI ---------------- */
+  if (loading) return <LoadingScreen />;
 
   const variantKeys = VARIANT_ORDER.filter((key) =>
     items.some((item) => item.variants && item.variants[key] !== undefined),
   );
+
   console.log("📊 VARIANT KEYS:", variantKeys);
 
   return (
