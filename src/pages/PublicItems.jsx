@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { useParams } from "react-router-dom";
-import MenuItemRow from "../components/MenuItemRow";
+import MenuItemRow from "../components/pagesMenuItemRow";
 import BackButton from "../components/BackButton";
 import LoadingScreen from "../components/LoadingScreen";
 
@@ -98,13 +98,37 @@ export default function PublicItems() {
       (a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999),
     );
 
-    const normalizedItems = sortedItems.map((item) => ({
-      ...item,
-      variants:
-        typeof item.variants === "string"
-          ? JSON.parse(item.variants)
-          : item.variants,
-    }));
+    const normalizedItems = sortedItems.map((item) => {
+      let variantsObj = item.variants;
+
+      // Parse if string
+      if (typeof variantsObj === "string") {
+        try {
+          variantsObj = JSON.parse(variantsObj);
+        } catch {
+          variantsObj = null;
+        }
+      }
+
+      // Normalize keys (Cup, Teapot, etc.)
+      if (variantsObj && typeof variantsObj === "object") {
+        const cleaned = {};
+
+        Object.keys(variantsObj).forEach((k) => {
+          const normalizedKey =
+            k.charAt(0).toUpperCase() + k.slice(1).toLowerCase();
+
+          cleaned[normalizedKey] = variantsObj[k];
+        });
+
+        variantsObj = cleaned;
+      }
+
+      return {
+        ...item,
+        variants: variantsObj,
+      };
+    });
 
     setItems(normalizedItems);
 

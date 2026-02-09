@@ -1,19 +1,17 @@
-export default function MenuItemRow({ item, hasTriple }) {
+export default function MenuItemRow({ item, variantKeys }) {
   const { name, price, variants, description } = item;
 
-  let single = variants?.Single;
-  let double = variants?.Double;
-  let triple = variants?.Triple;
+  const displayVariants = {};
 
-  // If item has variants but only ONE price, treat as Single
-  if (variants) {
-    const values = Object.entries(variants)
-      .map(([k, v]) => v)
-      .filter((v) => v !== null && v !== undefined);
-
-    if (!single && values.length === 1) {
-      single = values[0];
-    }
+  if (variants && typeof variants === "object") {
+    variantKeys.forEach((key) => {
+      if (variants[key] !== undefined && variants[key] !== null) {
+        displayVariants[key] = variants[key];
+      }
+    });
+  } else if (variantKeys.length > 0) {
+    // No variants -> put base price in first column
+    displayVariants[variantKeys[0]] = price;
   }
 
   return (
@@ -27,17 +25,19 @@ export default function MenuItemRow({ item, hasTriple }) {
       </div>
 
       {/* RIGHT */}
-      {variants ? (
-        <div className="brand-light brand-border flex gap-6 text-right whitespace-nowrap min-w-[40%] justify-end text-sm">
-          <span>{single ?? ""}</span>
-          <span>{double ?? ""}</span>
-          {hasTriple && <span>{triple ?? ""}</span>}
-        </div>
-      ) : (
-        <div className="min-w-[40%] text-right font-medium text-sm">
-          {price}
-        </div>
-      )}
+      <div className="brand-light brand-border flex gap-6 text-right whitespace-nowrap min-w-[40%] justify-end text-sm">
+        {variantKeys.length > 0 ? (
+          variantKeys.map((key) => (
+            <span key={key} className="tabular-nums">
+              {displayVariants[key] ?? ""}
+            </span>
+          ))
+        ) : (
+          <span className="min-w-[40%] text-right font-medium text-sm">
+            {price}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
