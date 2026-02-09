@@ -146,7 +146,7 @@ export default function AdminSubcategories() {
       console.log("🟡 Uploading subcategory image:", filePath);
 
       const { error: uploadErr } = await supabase.storage
-        .from("category-images")
+        .from("subcategory-images")
         .upload(filePath, file, { upsert: true });
 
       if (uploadErr) {
@@ -157,7 +157,7 @@ export default function AdminSubcategories() {
 
       const {
         data: { publicUrl },
-      } = supabase.storage.from("category-images").getPublicUrl(filePath);
+      } = supabase.storage.from("subcategory-images").getPublicUrl(filePath);
 
       console.log("🟢 Uploaded image URL:", publicUrl);
 
