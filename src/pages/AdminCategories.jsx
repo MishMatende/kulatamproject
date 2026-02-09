@@ -18,7 +18,7 @@ export default function AdminCategories() {
   const fileInputRef = useRef(null);
 
   const CACHE_KEY = "admin_categories";
-  const TTL_MINUTES = 10;
+  const TTL_MINUTES = 1;
 
   /* ---------------- LOAD ---------------- */
   async function load(force = false) {

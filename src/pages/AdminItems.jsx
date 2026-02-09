@@ -35,7 +35,7 @@ export default function AdminItems() {
   const fileInputRef = useRef(null);
 
   const CACHE_KEY = "admin_items";
-  const TTL_MINUTES = 10;
+  const TTL_MINUTES = 1;
 
   /* ---------------- HAPTIC ---------------- */
   function haptic(type = "light") {

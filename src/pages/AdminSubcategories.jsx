@@ -22,7 +22,7 @@ export default function AdminSubcategories() {
   const fileInputRefs = useRef({});
 
   const CACHE_KEY = `admin_subcategories_${categoryId}`;
-  const TTL_MINUTES = 10;
+  const TTL_MINUTES = 1;
 
   /* ---------------- LOAD ---------------- */
   async function load(force = false) {
