@@ -13,7 +13,15 @@ export default function PublicItems() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const VARIANT_ORDER = ["Single", "Double", "Triple", "Cup", "Teapot"];
+  const VARIANT_ORDER = [
+    "Single",
+    "Double",
+    "Triple",
+    "Cup",
+    "Teapot",
+    "Small",
+    "Large",
+  ];
 
   const CACHE_KEY = `public_items_${subcategoryId}`;
   const TTL_MINUTES = 15;
