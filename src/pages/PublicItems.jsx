@@ -24,7 +24,7 @@ export default function PublicItems() {
   ];
 
   const CACHE_KEY = `public_items_${subcategoryId}`;
-  const TTL_MINUTES = 15;
+  const TTL_MINUTES = 10;
 
   /* ---------------- LOAD ---------------- */
   async function load(force = false) {

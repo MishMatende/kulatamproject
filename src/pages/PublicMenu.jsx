@@ -6,7 +6,7 @@ export default function PublicMenu() {
   const [loading, setLoading] = useState(true);
 
   const CACHE_KEY = "public_menu";
-  const TTL_MINUTES = 15;
+  const TTL_MINUTES = 10;
 
   /* ---------------- LOAD ---------------- */
   async function load(force = false) {

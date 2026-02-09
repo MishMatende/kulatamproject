@@ -14,7 +14,7 @@ export default function PublicSubcategories() {
   const [loading, setLoading] = useState(true);
 
   const CACHE_KEY = `public_category_${categoryId}`;
-  const TTL_MINUTES = 15;
+  const TTL_MINUTES = 10;
 
   /* ---------------- LOAD ---------------- */
   async function load(force = false) {
