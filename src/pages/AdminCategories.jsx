@@ -22,8 +22,6 @@ export default function AdminCategories() {
 
   /* ---------------- LOAD ---------------- */
   async function load(force = false) {
-    console.log("🔄 load() categories | force =", force);
-
     if (!force) {
       try {
         const cachedRaw = localStorage.getItem(CACHE_KEY);
@@ -32,7 +30,6 @@ export default function AdminCategories() {
           const age = Date.now() - cached.timestamp;
 
           if (age < TTL_MINUTES * 60 * 1000) {
-            console.log("🟢 Using cached categories");
             setCategories(cached.categories);
             return;
           }
@@ -41,8 +38,6 @@ export default function AdminCategories() {
         console.warn("🟡 Cache read failed", err);
       }
     }
-
-    console.log("🟡 Fetching fresh categories from Supabase");
 
     const { data, error } = await supabase
       .from("categories")
@@ -65,8 +60,6 @@ export default function AdminCategories() {
         timestamp: Date.now(),
       }),
     );
-
-    console.log("🟢 Categories cache updated");
   }
 
   /* ---------------- ADD ---------------- */
@@ -206,8 +199,7 @@ export default function AdminCategories() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "categories" },
-        (payload) => {
-          console.log("🟢 Realtime category change:", payload.eventType);
+        () => {
           localStorage.removeItem(CACHE_KEY);
           load(true);
         },

@@ -10,7 +10,6 @@ export default function PublicMenu() {
 
   /* ---------------- LOAD ---------------- */
   async function load(force = false) {
-    console.log("🔄 load() public menu | force =", force);
     setLoading(true);
 
     if (!force) {
@@ -21,7 +20,6 @@ export default function PublicMenu() {
           const age = Date.now() - cached.timestamp;
 
           if (age < TTL_MINUTES * 60 * 1000) {
-            console.log("🟢 Using cached public menu");
             setData(cached.data);
             setLoading(false);
             return;
@@ -31,8 +29,6 @@ export default function PublicMenu() {
         console.warn("🟡 Cache read failed", err);
       }
     }
-
-    console.log("🟡 Fetching fresh public menu");
 
     const { data: categories, error } = await supabase
       .from("categories")
@@ -67,7 +63,6 @@ export default function PublicMenu() {
       }),
     );
 
-    console.log("🟢 Public menu cache updated");
     setLoading(false);
   }
 
@@ -79,7 +74,6 @@ export default function PublicMenu() {
         "postgres_changes",
         { event: "*", schema: "public", table: "categories" },
         () => {
-          console.log("🟢 Realtime category change (menu)");
           localStorage.removeItem(CACHE_KEY);
           load(true);
         },
@@ -88,7 +82,6 @@ export default function PublicMenu() {
         "postgres_changes",
         { event: "*", schema: "public", table: "menu_items" },
         () => {
-          console.log("🟢 Realtime menu item change");
           localStorage.removeItem(CACHE_KEY);
           load(true);
         },

@@ -18,7 +18,6 @@ export default function PublicSubcategories() {
 
   /* ---------------- LOAD ---------------- */
   async function load(force = false) {
-    console.log("🔄 load() public subcategories | force =", force);
     setLoading(true);
 
     if (!force) {
@@ -29,7 +28,6 @@ export default function PublicSubcategories() {
           const age = Date.now() - cached.timestamp;
 
           if (age < TTL_MINUTES * 60 * 1000) {
-            console.log("🟢 Using cached public subcategories");
             setCategory(cached.category);
             setSubcategories(cached.subcategories);
             setLoading(false);
@@ -40,8 +38,6 @@ export default function PublicSubcategories() {
         console.warn("🟡 Cache read failed", err);
       }
     }
-
-    console.log("🟡 Fetching fresh public subcategories");
 
     const { data: cat, error: catErr } = await supabase
       .from("categories")
@@ -79,7 +75,6 @@ export default function PublicSubcategories() {
       }),
     );
 
-    console.log("🟢 Public subcategories cache updated");
     setLoading(false);
   }
 
@@ -95,11 +90,7 @@ export default function PublicSubcategories() {
           table: "subcategories",
           filter: `category_id=eq.${categoryId}`,
         },
-        (payload) => {
-          console.log(
-            "🟢 Realtime public subcategory change:",
-            payload.eventType,
-          );
+        () => {
           localStorage.removeItem(CACHE_KEY);
           load(true);
         },

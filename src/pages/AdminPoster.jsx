@@ -36,8 +36,6 @@ export default function AdminPoster() {
     setUploading(true);
 
     try {
-      console.log("🟡 Uploading poster file:", file);
-
       // Disable all old posters
       const { error: disableErr } = await supabase
         .from("posters")
@@ -69,8 +67,6 @@ export default function AdminPoster() {
         .getPublicUrl(path);
 
       const imageUrl = data.publicUrl;
-
-      console.log("🟢 Poster uploaded public URL:", imageUrl);
 
       const { error: insertError } = await supabase.from("posters").insert({
         image_url: imageUrl,

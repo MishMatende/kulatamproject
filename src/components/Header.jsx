@@ -17,7 +17,7 @@ export default function Header() {
             className="text-2xl md:text-3xl font-semibold"
             style={{ color: "var(--brand-bg-dark)" }}
           >
-            KT CAFE
+            CAFE
           </h1>
         </div>
 

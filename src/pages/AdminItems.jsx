@@ -47,13 +47,10 @@ export default function AdminItems() {
 
   /* ---------------- LOAD ---------------- */
   async function load(force = false) {
-    console.log("🔄 load() called | force =", force);
-
     if (!force) {
       try {
         const cached = JSON.parse(localStorage.getItem(CACHE_KEY));
         if (cached && Date.now() - cached.timestamp < TTL_MINUTES * 60000) {
-          console.log("🟢 Using cached data");
           setCategories(cached.categories);
           setSubcategories(cached.subcategories);
           setItems(cached.items);
@@ -63,8 +60,6 @@ export default function AdminItems() {
         console.warn("🟡 Cache read failed", err);
       }
     }
-
-    console.log("🟡 Fetching fresh data from Supabase");
 
     const { data: cats, error: catErr } = await supabase
       .from("categories")
@@ -96,8 +91,6 @@ export default function AdminItems() {
         timestamp: Date.now(),
       }),
     );
-
-    console.log("🟢 Cache updated");
   }
 
   useEffect(() => {
@@ -156,17 +149,6 @@ export default function AdminItems() {
     e.preventDefault();
     haptic("medium");
 
-    console.log("🟡 handleSave triggered");
-    console.log("Form values:", {
-      name,
-      desc,
-      price,
-      categoryId,
-      subcategoryId,
-      file,
-      editingItem,
-    });
-
     if (!name || !price || !categoryId || !subcategoryId) {
       console.warn("🔴 Missing required fields");
       toast.error("Name, price, category & subcategory required");
@@ -179,7 +161,6 @@ export default function AdminItems() {
     if (file) {
       try {
         const path = `${Date.now()}-${file.name}`;
-        console.log("🟡 Uploading image:", path);
 
         const { error: uploadError } = await supabase.storage
           .from("menu-images")
@@ -196,7 +177,6 @@ export default function AdminItems() {
         } = supabase.storage.from("menu-images").getPublicUrl(path);
 
         imageUrl = publicUrl;
-        console.log("🟢 Image uploaded:", imageUrl);
       } catch (err) {
         console.error("🔴 Image upload exception:", err);
         toast.error("Image upload crashed");
@@ -214,8 +194,6 @@ export default function AdminItems() {
       image_url: imageUrl,
     };
 
-    console.log("🟡 Supabase payload:", payload);
-
     /* ---------- UPDATE ---------- */
     if (editingItem) {
       const { data, error } = await supabase
@@ -223,8 +201,6 @@ export default function AdminItems() {
         .update(payload)
         .eq("id", editingItem.id)
         .select();
-
-      console.log("🟡 Update response:", { data, error });
 
       if (error) {
         console.error("🔴 Update failed:", error);
@@ -240,8 +216,6 @@ export default function AdminItems() {
         .insert(payload)
         .select();
 
-      console.log("🟡 Insert response:", { data, error });
-
       if (error) {
         console.error("🔴 Insert failed:", error);
         toast.error(error.message || "Insert failed");
@@ -250,8 +224,6 @@ export default function AdminItems() {
 
       toast.success("Item added");
     }
-
-    console.log("🟢 Save completed successfully");
 
     setOpen(false);
     localStorage.removeItem(CACHE_KEY);
@@ -284,9 +256,7 @@ export default function AdminItems() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "menu_items" },
-        (payload) => {
-          console.log("🟢 Realtime DB change:", payload.eventType);
-
+        () => {
           localStorage.removeItem(CACHE_KEY);
           load(true); // 👈 FORCE fresh fetch
         },

@@ -9,8 +9,6 @@ export default function PosterModal() {
 
   async function loadPoster() {
     try {
-      console.log("🟡 Loading poster...");
-
       const { data, error } = await supabase
         .from("posters")
         .select("*")
@@ -18,8 +16,6 @@ export default function PosterModal() {
         .order("created_at", { ascending: false })
         .limit(1)
         .single();
-
-      console.log("🟡 Poster DB response:", { data, error });
 
       if (error || !data) {
         setPosterUrl(null);
@@ -32,7 +28,6 @@ export default function PosterModal() {
 
       // Show modal every reload
       setOpen(true);
-      console.log("🟢 Poster loaded and modal opened");
     } catch (err) {
       console.error("🔴 Poster load crashed:", err);
       setPosterUrl(null);

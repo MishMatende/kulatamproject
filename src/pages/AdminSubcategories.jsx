@@ -26,8 +26,6 @@ export default function AdminSubcategories() {
 
   /* ---------------- LOAD ---------------- */
   async function load(force = false) {
-    console.log("🔄 load() subcategories | force =", force);
-
     if (!force) {
       try {
         const cachedRaw = localStorage.getItem(CACHE_KEY);
@@ -36,7 +34,6 @@ export default function AdminSubcategories() {
           const age = Date.now() - cached.timestamp;
 
           if (age < TTL_MINUTES * 60 * 1000) {
-            console.log("🟢 Using cached subcategories");
             setCategory(cached.category);
             setSubcategories(cached.subcategories);
             return;
@@ -46,8 +43,6 @@ export default function AdminSubcategories() {
         console.warn("🟡 Cache read failed", err);
       }
     }
-
-    console.log("🟡 Fetching fresh subcategories from Supabase");
 
     const { data: cat, error: catErr } = await supabase
       .from("categories")
@@ -85,8 +80,6 @@ export default function AdminSubcategories() {
         timestamp: Date.now(),
       }),
     );
-
-    console.log("🟢 Subcategories cache updated");
   }
 
   /* ---------------- ADD ---------------- */
@@ -143,8 +136,6 @@ export default function AdminSubcategories() {
       const fileExt = file.name.split(".").pop();
       const filePath = `subcategories/${sub.id}-${Date.now()}.${fileExt}`;
 
-      console.log("🟡 Uploading subcategory image:", filePath);
-
       const { error: uploadErr } = await supabase.storage
         .from("subcategory-images")
         .upload(filePath, file, { upsert: true });
@@ -158,8 +149,6 @@ export default function AdminSubcategories() {
       const {
         data: { publicUrl },
       } = supabase.storage.from("subcategory-images").getPublicUrl(filePath);
-
-      console.log("🟢 Uploaded image URL:", publicUrl);
 
       const { error: updateErr } = await supabase
         .from("subcategories")
@@ -216,8 +205,7 @@ export default function AdminSubcategories() {
           table: "subcategories",
           filter: `category_id=eq.${categoryId}`,
         },
-        (payload) => {
-          console.log("🟢 Realtime subcategory change:", payload.eventType);
+        () => {
           localStorage.removeItem(CACHE_KEY);
           load(true);
         },

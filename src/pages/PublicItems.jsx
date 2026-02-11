@@ -28,7 +28,6 @@ export default function PublicItems() {
 
   /* ---------------- LOAD ---------------- */
   async function load(force = false) {
-    console.log("🔄 load() public items | force =", force);
     setLoading(true);
 
     // 1️⃣ Try cache first (unless forced)
@@ -40,8 +39,6 @@ export default function PublicItems() {
           const age = Date.now() - cached.timestamp;
 
           if (age < TTL_MINUTES * 60 * 1000) {
-            console.log("🟢 Using cached public items");
-
             setSubcategory(cached.subcategory);
             setCategory(cached.category);
             setItems(cached.items);
@@ -56,8 +53,6 @@ export default function PublicItems() {
         console.warn("🟡 Cache read failed", err);
       }
     }
-
-    console.log("🟡 Fetching fresh items from Supabase");
 
     // 2️⃣ Fetch subcategory
     const { data: sub, error: subErr } = await supabase
@@ -151,7 +146,6 @@ export default function PublicItems() {
       }),
     );
 
-    console.log("🟢 Public items cache updated");
     setLoading(false);
   }
 
@@ -168,8 +162,6 @@ export default function PublicItems() {
           filter: `subcategory_id=eq.${subcategoryId}`,
         },
         (payload) => {
-          console.log("🟢 Realtime menu_items change:", payload.eventType);
-
           localStorage.removeItem(CACHE_KEY);
           load(true); // 👈 force refresh
         },
@@ -192,8 +184,6 @@ export default function PublicItems() {
   const variantKeys = VARIANT_ORDER.filter((key) =>
     items.some((item) => item.variants && item.variants[key] !== undefined),
   );
-
-  console.log("📊 VARIANT KEYS:", variantKeys);
 
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto">
