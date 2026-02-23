@@ -157,41 +157,16 @@ export default function AdminPoster() {
       {/* HEADER */}
       <div>
         <h1 className="text-2xl font-semibold">Poster Manager</h1>
-        <p className="text-sm text-gray-500">
-          Upload a poster to show on every client page refresh.
-        </p>
-      </div>
-
-      {/* ================= LIBRARY ================= */}
-
-      <div className="space-y-4">
-        <h2 className="text-base font-semibold">Poster Library</h2>
-
-        {loadingPosters ? (
-          <p className="text-sm text-gray-400">Loading...</p>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {posters.map((poster) => (
-              <div
-                key={poster.id}
-                onClick={() => setSelectedPoster(poster)}
-                className="relative cursor-pointer rounded-2xl overflow-hidden border hover:shadow-md transition"
-              >
-                <img
-                  src={poster.image_url}
-                  className="h-36 w-full object-cover"
-                />
-
-                {poster.is_active && (
-                  <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
-                    <CheckCircle size={12} />
-                    Active
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
+        <div
+          className="rounded-xl border px-4 py-3 text-sm mt-2"
+          style={{
+            borderColor: "var(--brand-primary)",
+            color: "var(--brand-primary)",
+          }}
+        >
+          The latest uploaded poster will automatically become active and show
+          to customers on refresh.
+        </div>
       </div>
 
       {/* ================= UPLOAD (YOUR DESIGN + DATES) ================= */}
@@ -207,7 +182,7 @@ export default function AdminPoster() {
             type="datetime-local"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            className="w-full mt-1 border rounded-xl px-3 py-2 text-sm"
+            className="w-full max-w-full min-w-0 mt-1 border rounded-xl px-3 py-2 text-sm box-border"
           />
         </div>
 
@@ -218,7 +193,7 @@ export default function AdminPoster() {
             type="datetime-local"
             value={expiryDate}
             onChange={(e) => setExpiryDate(e.target.value)}
-            className="w-full mt-1 border rounded-xl px-3 py-2 text-sm"
+            className="w-full max-w-full min-w-0 mt-1 border rounded-xl px-3 py-2 text-sm box-border"
           />
         </div>
 
@@ -308,18 +283,39 @@ export default function AdminPoster() {
             </>
           )}
         </button>
-
-        <div
-          className="rounded-xl border px-4 py-3 text-sm"
-          style={{
-            borderColor: "var(--brand-primary)",
-            color: "var(--brand-primary)",
-          }}
-        >
-          The latest uploaded poster will automatically become active and show
-          to customers on refresh.
-        </div>
       </form>
+
+      {/* ================= LIBRARY ================= */}
+
+      <div className="space-y-4">
+        <h2 className="text-base font-semibold">Poster Library</h2>
+
+        {loadingPosters ? (
+          <p className="text-sm text-gray-400">Loading...</p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            {posters.map((poster) => (
+              <div
+                key={poster.id}
+                onClick={() => setSelectedPoster(poster)}
+                className="relative cursor-pointer rounded-2xl overflow-hidden border hover:shadow-md transition"
+              >
+                <img
+                  src={poster.image_url}
+                  className="h-36 w-full object-cover"
+                />
+
+                {poster.is_active && (
+                  <div className="absolute top-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1">
+                    <CheckCircle size={12} />
+                    Active
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* ================= PREVIEW MODAL ================= */}
 
