@@ -177,23 +177,26 @@ export default function AdminPoster() {
       >
         {/* Start Date */}
         <div>
-          <label className="text-xs text-gray-500">Start Date</label>
+          <label className="text-xs text-gray-400 mb-1 block">
+            Start Date & Time
+          </label>
           <input
             type="datetime-local"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            className="w-full max-w-full min-w-0 mt-1 border rounded-xl px-3 py-2 text-sm box-border"
+            className="w-full max-w-full min-w-0 mt-1 border rounded-xl px-3 py-2 text-sm box-border text-gray-600"
           />
         </div>
 
-        {/* Expiry Date */}
         <div>
-          <label className="text-xs text-gray-500">Expiry Date</label>
+          <label className="text-xs text-gray-400 mb-1 block">
+            Expiry Date & Time
+          </label>
           <input
             type="datetime-local"
             value={expiryDate}
             onChange={(e) => setExpiryDate(e.target.value)}
-            className="w-full max-w-full min-w-0 mt-1 border rounded-xl px-3 py-2 text-sm box-border"
+            className="w-full max-w-full min-w-0 mt-1 border rounded-xl px-3 py-2 text-sm box-border text-gray-600"
           />
         </div>
 
