@@ -111,16 +111,30 @@ export default function AdminPoster() {
   /* ================= ACTIONS ================= */
 
   async function setActive(poster) {
-    await supabase.from("posters").update({ is_active: false });
+    try {
+      // 1️⃣ Deactivate all OTHER posters
+      await supabase
+        .from("posters")
+        .update({ is_active: false })
+        .neq("id", poster.id);
 
-    await supabase
-      .from("posters")
-      .update({ is_active: true })
-      .eq("id", poster.id);
+      // 2️⃣ Activate selected poster
+      const { error } = await supabase
+        .from("posters")
+        .update({ is_active: true })
+        .eq("id", poster.id);
 
-    toast.success("Poster activated");
-    loadPosters();
-    setSelectedPoster(null);
+      if (error) {
+        toast.error("Activation failed");
+        return;
+      }
+
+      toast.success("Poster activated");
+      loadPosters();
+      setSelectedPoster(null);
+    } catch (err) {
+      toast.error("Activation failed");
+    }
   }
 
   async function deactivatePoster(poster) {
@@ -180,24 +194,31 @@ export default function AdminPoster() {
           <label className="text-xs text-gray-400 mb-1 block">
             Start Date & Time
           </label>
-          <input
-            type="datetime-local"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="w-full max-w-full min-w-0 mt-1 border rounded-xl px-3 py-2 text-sm box-border text-gray-600"
-          />
+
+          <div className="overflow-hidden rounded-xl">
+            <input
+              type="datetime-local"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full mt-1 border rounded-xl px-3 py-2 text-sm text-gray-600"
+            />
+          </div>
         </div>
 
+        {/* Expiry Date */}
         <div>
           <label className="text-xs text-gray-400 mb-1 block">
             Expiry Date & Time
           </label>
-          <input
-            type="datetime-local"
-            value={expiryDate}
-            onChange={(e) => setExpiryDate(e.target.value)}
-            className="w-full max-w-full min-w-0 mt-1 border rounded-xl px-3 py-2 text-sm box-border text-gray-600"
-          />
+
+          <div className="overflow-hidden rounded-xl">
+            <input
+              type="datetime-local"
+              value={expiryDate}
+              onChange={(e) => setExpiryDate(e.target.value)}
+              className="w-full mt-1 border rounded-xl px-3 py-2 text-sm text-gray-600"
+            />
+          </div>
         </div>
 
         {/* Upload Area */}
@@ -347,9 +368,9 @@ export default function AdminPoster() {
                 {!selectedPoster.is_active ? (
                   <button
                     onClick={() => setActive(selectedPoster)}
-                    className="flex-1 bg-green-500 text-white py-2 rounded-xl text-sm"
+                    className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-xl text-sm"
                   >
-                    Set Active
+                    Activate
                   </button>
                 ) : (
                   <button

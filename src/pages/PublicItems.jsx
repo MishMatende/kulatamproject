@@ -94,14 +94,28 @@ export default function PublicItems() {
       .from("subcategories")
       .select("*")
       .eq("parent_id", subcategoryId)
-      .order("sort_order", { ascending: true });
+      .order("sort_order", { ascending: true, nullsFirst: false });
 
-    setChildren(childSubs || []);
+    const sortedChildren = (childSubs || []).sort(
+      (a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999),
+    );
 
-    const resolvedTargetId =
-      childSubs && childSubs.length > 0
-        ? overrideTab || childSubs[0].id
-        : subcategoryId;
+    setChildren(sortedChildren);
+
+    let resolvedTargetId = activeTab;
+
+    // If user clicked a tab, use it
+    if (overrideTab) {
+      resolvedTargetId = overrideTab;
+    }
+    // If first load and no active tab yet
+    else if (!activeTab && childSubs && childSubs.length > 0) {
+      resolvedTargetId = childSubs[0].id;
+    }
+    // If no children
+    else if (!activeTab) {
+      resolvedTargetId = subcategoryId;
+    }
 
     setActiveTab(resolvedTargetId);
 
@@ -225,7 +239,10 @@ export default function PublicItems() {
           {children.map((child) => (
             <button
               key={child.id}
-              onClick={() => load(false, child.id)}
+              onClick={() => {
+                setActiveTab(child.id);
+                load(false, child.id);
+              }}
               className={`px-4 py-1 rounded-full text-sm font-medium transition ${
                 activeTab === child.id
                   ? "bg-[var(--brand-primary)] text-white"

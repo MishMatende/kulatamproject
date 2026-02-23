@@ -113,6 +113,19 @@ export default function AdminSubcategories() {
 
   /* ---------------- UPDATE ---------------- */
   async function updateField(id, field, value) {
+    // 1️⃣ Optimistic UI update
+    setSubcategories((prev) => {
+      const updated = prev.map((s) =>
+        s.id === id ? { ...s, [field]: value } : s,
+      );
+
+      // 2️⃣ Re-sort locally by sort_order
+      return [...updated].sort(
+        (a, b) => (a.sort_order ?? 9999) - (b.sort_order ?? 9999),
+      );
+    });
+
+    // 3️⃣ Update DB (background)
     const { error } = await supabase
       .from("subcategories")
       .update({ [field]: value })
@@ -120,12 +133,11 @@ export default function AdminSubcategories() {
 
     if (error) {
       toast.error("Failed to update subcategory");
+      load(true); // fallback safety
       return;
     }
 
-    toast.success("Subcategory updated");
-    localStorage.removeItem(CACHE_KEY);
-    load(true);
+    toast.success("Updated");
   }
 
   /* ---------------- UPLOAD IMAGE ---------------- */
@@ -393,7 +405,7 @@ export default function AdminSubcategories() {
                       transition={{ duration: 0.2 }}
                       className="ml-4 sm:ml-8"
                     >
-                      <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 hover:bg-gray-100 transition">
+                      <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 hover:bg-gray-100 transition">
                         {/* Name Input */}
                         <input
                           className="flex-1 bg-transparent outline-none text-sm font-medium text-gray-700"
@@ -403,10 +415,25 @@ export default function AdminSubcategories() {
                           }
                         />
 
+                        {/* Sort Input */}
+                        <input
+                          type="number"
+                          className="w-16 text-center rounded-lg border border-gray-300 px-2 py-1 text-sm
+               focus:outline-none focus:ring-2 focus:ring-black"
+                          defaultValue={child.sort_order}
+                          onBlur={(e) =>
+                            updateField(
+                              child.id,
+                              "sort_order",
+                              e.target.value ? parseInt(e.target.value) : null,
+                            )
+                          }
+                        />
+
                         {/* Delete Button */}
                         <button
                           onClick={() => setDeleteSub(child)}
-                          className="ml-3 text-xs font-semibold text-red-500 hover:text-red-600 transition"
+                          className="text-xs font-semibold text-red-500 hover:text-red-600 transition"
                         >
                           Delete
                         </button>
