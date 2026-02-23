@@ -7,7 +7,27 @@ export default function Header() {
     <header className="w-full relative z-20 bg-white shadow-lg">
       <div className="max-w-6xl mx-auto flex items-center justify-between px-4 py-3">
         {/* Left Logo + Title */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
+          <img
+            src="/kulatam-logo.svg"
+            alt="Logo"
+            className="h-12 w-12 object-contain"
+          />
+
+          <div className="h-12 flex flex-col justify-center">
+            {/* CAFE */}
+            <h1 className="text-[22px] font-extrabold tracking-[0.25em] text-[#9C5E00] leading-none">
+              CAFE
+            </h1>
+
+            {/* Coffee | Tea | Fast Meals */}
+            <div className="text-[10px] tracking-[0.28em] text-gray-600 mt-[3px] leading-none font-medium">
+              COFFEE <span className="text-[#9C5E00]">|</span> TEA{" "}
+              <span className="text-[#9C5E00]">|</span> FAST MEALS
+            </div>
+          </div>
+        </div>
+        {/* <div className="flex items-center gap-3">
           <img
             src="/kulatam-logo.svg"
             alt="Logo"
@@ -19,7 +39,7 @@ export default function Header() {
           >
             CAFE
           </h1>
-        </div>
+        </div> */}
 
         {/* Social Icons */}
         <div className="flex gap-3">

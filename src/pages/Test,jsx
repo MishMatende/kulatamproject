@@ -1,0 +1,393 @@
+import { useRef, useState, useEffect } from "react";
+import { supabase } from "../lib/supabase";
+import BackButton from "../components/BackButton";
+import toast from "react-hot-toast";
+import { motion, AnimatePresence } from "framer-motion";
+import { UploadCloud, Trash2, CheckCircle, Loader2 } from "lucide-react";
+
+export default function AdminPoster() {
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [uploading, setUploading] = useState(false);
+
+  const [posters, setPosters] = useState([]);
+  const [activePoster, setActivePoster] = useState(null);
+  const [loadingPosters, setLoadingPosters] = useState(true);
+
+  const [startDate, setStartDate] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [confirmModal, setConfirmModal] = useState(null);
+
+  const fileRef = useRef(null);
+
+  /* ---------------- SCHEDULING ENGINE ---------------- */
+
+  async function loadPosters() {
+    setLoadingPosters(true);
+
+    const { data, error } = await supabase
+      .from("posters")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      toast.error("Failed to load posters");
+      setLoadingPosters(false);
+      return;
+    }
+
+    const now = new Date();
+
+    const validPosters = data.filter((poster) => {
+      const startsValid =
+        !poster.starts_at || new Date(poster.starts_at) <= now;
+
+      const notExpired =
+        !poster.expires_at || new Date(poster.expires_at) > now;
+
+      return startsValid && notExpired;
+    });
+
+    validPosters.sort((a, b) => {
+      const aTime = a.starts_at
+        ? new Date(a.starts_at)
+        : new Date(a.created_at);
+
+      const bTime = b.starts_at
+        ? new Date(b.starts_at)
+        : new Date(b.created_at);
+
+      return bTime - aTime;
+    });
+
+    const shouldBeActive = validPosters[0];
+
+    await supabase.from("posters").update({ is_active: false });
+
+    if (shouldBeActive) {
+      await supabase
+        .from("posters")
+        .update({ is_active: true })
+        .eq("id", shouldBeActive.id);
+    }
+
+    const refreshed = await supabase
+      .from("posters")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    setPosters(refreshed.data || []);
+    setActivePoster(refreshed.data?.find((p) => p.is_active) || null);
+
+    setLoadingPosters(false);
+  }
+
+  useEffect(() => {
+    loadPosters();
+  }, []);
+
+  /* ---------------- FILE ---------------- */
+
+  function handleFileChange(f) {
+    if (!f) return;
+    setFile(f);
+    setPreview(URL.createObjectURL(f));
+  }
+
+  function removePoster() {
+    setFile(null);
+    setPreview(null);
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
+  /* ---------------- UPLOAD ---------------- */
+
+  async function uploadPoster(e) {
+    e.preventDefault();
+
+    if (!file) {
+      toast.error("Select a poster first");
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      const path = `poster-${Date.now()}-${file.name}`;
+
+      await supabase.storage
+        .from("poster-images")
+        .upload(path, file, { upsert: true });
+
+      const { data } = supabase.storage
+        .from("poster-images")
+        .getPublicUrl(path);
+
+      await supabase.from("posters").insert({
+        image_url: data.publicUrl,
+        is_active: false,
+        starts_at: startDate || null,
+        expires_at: expiryDate || null,
+      });
+
+      await loadPosters();
+
+      toast.success("Poster uploaded");
+      removePoster();
+      setStartDate("");
+      setExpiryDate("");
+    } catch {
+      toast.error("Upload failed");
+    }
+
+    setUploading(false);
+  }
+
+  /* ---------------- SET ACTIVE ---------------- */
+
+  async function setActive(poster) {
+    await supabase.from("posters").update({ is_active: false });
+    await supabase
+      .from("posters")
+      .update({ is_active: true })
+      .eq("id", poster.id);
+
+    toast.success("Poster activated");
+    loadPosters();
+  }
+
+  /* ---------------- DELETE ---------------- */
+
+  async function deletePoster(poster) {
+    const path = poster.image_url.split("/poster-images/")[1];
+
+    if (path) {
+      await supabase.storage.from("poster-images").remove([path]);
+    }
+
+    await supabase.from("posters").delete().eq("id", poster.id);
+
+    toast.success("Poster deleted");
+    setConfirmModal(null);
+    loadPosters();
+  }
+
+  /* ================================================= */
+
+  return (
+    <div className="space-y-8 max-w-4xl mx-auto">
+      <BackButton />
+
+      <div>
+        <h1 className="text-3xl font-bold">Poster Manager</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          Schedule, activate and manage promotional posters.
+        </p>
+      </div>
+
+      {/* ---------------- ACTIVE HERO ---------------- */}
+
+      {activePoster && (
+        <div className="relative rounded-3xl overflow-hidden shadow-xl">
+          <img
+            src={activePoster.image_url}
+            className="w-full h-80 object-cover"
+          />
+
+          <div className="absolute inset-0 bg-black/30 flex flex-col justify-between p-6">
+            <div className="flex justify-between">
+              <span className="bg-green-500 text-white text-xs px-4 py-1 rounded-full font-semibold">
+                ACTIVE
+              </span>
+
+              <button
+                onClick={() =>
+                  setConfirmModal({
+                    type: "delete",
+                    poster: activePoster,
+                  })
+                }
+                className="bg-white/90 hover:bg-white text-red-600 px-4 py-2 rounded-xl text-sm font-medium"
+              >
+                Delete
+              </button>
+            </div>
+
+            {activePoster.expires_at && (
+              <p className="text-white text-xs">
+                Expires: {new Date(activePoster.expires_at).toLocaleString()}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ---------------- UPLOAD ---------------- */}
+
+      <form
+        onSubmit={uploadPoster}
+        className="bg-white rounded-3xl shadow-sm border p-6 space-y-5"
+      >
+        <div className="grid sm:grid-cols-2 gap-3">
+          <input
+            type="datetime-local"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="border rounded-xl px-3 py-2 text-sm"
+          />
+
+          <input
+            type="datetime-local"
+            value={expiryDate}
+            onChange={(e) => setExpiryDate(e.target.value)}
+            className="border rounded-xl px-3 py-2 text-sm"
+          />
+        </div>
+
+        <div
+          onClick={() => fileRef.current?.click()}
+          className="h-52 border-2 border-dashed rounded-2xl flex items-center justify-center cursor-pointer hover:bg-gray-50 transition"
+        >
+          {preview ? (
+            <img
+              src={preview}
+              className="h-full w-full object-cover rounded-2xl"
+            />
+          ) : (
+            <div className="text-center text-gray-400">
+              <UploadCloud size={28} />
+              <p className="text-sm mt-2">Click to upload poster</p>
+            </div>
+          )}
+        </div>
+
+        <input
+          ref={fileRef}
+          type="file"
+          hidden
+          accept="image/*"
+          onChange={(e) => handleFileChange(e.target.files[0])}
+        />
+
+        <button
+          disabled={uploading}
+          className="w-full bg-black text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2"
+        >
+          {uploading ? (
+            <>
+              <Loader2 className="animate-spin" size={18} />
+              Uploading...
+            </>
+          ) : (
+            "Upload Poster"
+          )}
+        </button>
+      </form>
+
+      {/* ---------------- LIBRARY GRID ---------------- */}
+
+      <div className="space-y-4">
+        <h2 className="text-lg font-semibold">Poster Library</h2>
+
+        {loadingPosters ? (
+          <p className="text-sm text-gray-400">Loading...</p>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <AnimatePresence>
+              {posters.map((poster) => (
+                <motion.div
+                  key={poster.id}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="relative group rounded-2xl overflow-hidden border shadow-sm"
+                >
+                  <img
+                    src={poster.image_url}
+                    className="h-36 w-full object-cover"
+                  />
+
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex flex-col justify-between p-3">
+                    <div className="text-xs text-white">
+                      {poster.is_active ? (
+                        <span className="flex items-center gap-1">
+                          <CheckCircle size={14} />
+                          Active
+                        </span>
+                      ) : (
+                        "Inactive"
+                      )}
+                    </div>
+
+                    <div className="flex gap-2">
+                      {!poster.is_active && (
+                        <button
+                          onClick={() => setActive(poster)}
+                          className="text-xs bg-green-500 text-white px-2 py-1 rounded-lg"
+                        >
+                          Set Active
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() =>
+                          setConfirmModal({
+                            type: "delete",
+                            poster,
+                          })
+                        }
+                        className="text-xs bg-red-600 text-white px-2 py-1 rounded-lg"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
+      </div>
+
+      {/* ---------------- MODAL ---------------- */}
+
+      <AnimatePresence>
+        {confirmModal && (
+          <motion.div
+            className="fixed inset-0 bg-black/40 flex items-center justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              className="bg-white rounded-2xl p-6 w-80 space-y-4"
+            >
+              <p className="text-sm font-medium">
+                Delete this poster permanently?
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setConfirmModal(null)}
+                  className="flex-1 bg-gray-100 rounded-xl py-2"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={() => deletePoster(confirmModal.poster)}
+                  className="flex-1 bg-red-600 text-white rounded-xl py-2"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}

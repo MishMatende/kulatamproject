@@ -12,6 +12,9 @@ export default function AdminItems() {
   const [subcategories, setSubcategories] = useState([]);
   const [items, setItems] = useState([]);
 
+  // 🔥 NEW — Active category filter
+  const [activeCategoryFilter, setActiveCategoryFilter] = useState("all");
+
   // Edit modal
   const [open, setOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -22,6 +25,7 @@ export default function AdminItems() {
   // Form
   const [categoryId, setCategoryId] = useState("");
   const [subcategoryId, setSubcategoryId] = useState("");
+  const [selectedChain, setSelectedChain] = useState([]);
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
   const [price, setPrice] = useState("");
@@ -67,7 +71,7 @@ export default function AdminItems() {
 
     const { data: subs, error: subErr } = await supabase
       .from("subcategories")
-      .select("id,name,category_id");
+      .select("id,name,category_id,parent_id"); // 🔥 parent_id added
 
     const { data: menu, error: menuErr } = await supabase
       .from("menu_items")
@@ -97,12 +101,55 @@ export default function AdminItems() {
     load();
   }, []);
 
-  /* ---------------- SEARCH + PAGINATION ---------------- */
-  const filteredItems = useMemo(
-    () =>
-      items.filter((i) => i.name.toLowerCase().includes(search.toLowerCase())),
-    [items, search],
+  /* ---------------- HIERARCHY HELPERS ---------------- */
+
+  const topLevelSubs = subcategories.filter(
+    (s) => s.category_id === categoryId && !s.parent_id,
   );
+
+  function getChildren(parentId) {
+    return subcategories.filter((s) => s.parent_id === parentId);
+  }
+
+  function handleSubSelect(level, id) {
+    const newChain = [...selectedChain.slice(0, level), id];
+    setSelectedChain(newChain);
+    setSubcategoryId(id); // always keep last selected
+  }
+
+  function buildChain(subId) {
+    const chain = [];
+    let current = subcategories.find((s) => s.id === subId);
+
+    while (current) {
+      chain.unshift(current.id);
+      current = subcategories.find((s) => s.id === current.parent_id);
+    }
+
+    return chain;
+  }
+
+  /* ---------------- SEARCH + PAGINATION ---------------- */
+
+  const filteredItems = useMemo(() => {
+    let filtered = items;
+
+    // 🔥 Category filter
+    if (activeCategoryFilter !== "all") {
+      filtered = filtered.filter(
+        (item) => item.category_id === activeCategoryFilter,
+      );
+    }
+
+    // 🔥 Search filter
+    if (search) {
+      filtered = filtered.filter((i) =>
+        i.name.toLowerCase().includes(search.toLowerCase()),
+      );
+    }
+
+    return filtered;
+  }, [items, search, activeCategoryFilter]);
 
   const totalPages = Math.ceil(filteredItems.length / PAGE_SIZE);
 
@@ -111,15 +158,19 @@ export default function AdminItems() {
     return filteredItems.slice(start, start + PAGE_SIZE);
   }, [filteredItems, page]);
 
-  useEffect(() => setPage(1), [search]);
+  useEffect(() => {
+    setPage(1);
+  }, [search, activeCategoryFilter]);
 
   /* ---------------- IMAGE ---------------- */
+
   function handleFileChange(f) {
     setFile(f);
     setPreview(f ? URL.createObjectURL(f) : null);
   }
 
   /* ---------------- OPEN MODALS ---------------- */
+
   function openAddModal() {
     setEditingItem(null);
     setName("");
@@ -127,6 +178,7 @@ export default function AdminItems() {
     setPrice("");
     setCategoryId("");
     setSubcategoryId("");
+    setSelectedChain([]); // 🔥 reset chain
     setFile(null);
     setPreview(null);
     setOpen(true);
@@ -139,18 +191,19 @@ export default function AdminItems() {
     setPrice(item.price ?? "");
     setCategoryId(item.category_id);
     setSubcategoryId(item.subcategory_id);
+    setSelectedChain(buildChain(item.subcategory_id)); // 🔥 rebuild hierarchy
     setPreview(item.image_url || null);
     setFile(null);
     setOpen(true);
   }
 
   /* ---------------- SAVE ---------------- */
+
   async function handleSave(e) {
     e.preventDefault();
     haptic("medium");
 
     if (!name || !price || !categoryId || !subcategoryId) {
-      console.warn("🔴 Missing required fields");
       toast.error("Name, price, category & subcategory required");
       return;
     }
@@ -167,7 +220,6 @@ export default function AdminItems() {
           .upload(path, file);
 
         if (uploadError) {
-          console.error("🔴 Image upload failed:", uploadError);
           toast.error("Image upload failed");
           return;
         }
@@ -177,8 +229,7 @@ export default function AdminItems() {
         } = supabase.storage.from("menu-images").getPublicUrl(path);
 
         imageUrl = publicUrl;
-      } catch (err) {
-        console.error("🔴 Image upload exception:", err);
+      } catch {
         toast.error("Image upload crashed");
         return;
       }
@@ -196,32 +247,13 @@ export default function AdminItems() {
 
     /* ---------- UPDATE ---------- */
     if (editingItem) {
-      const { data, error } = await supabase
+      await supabase
         .from("menu_items")
         .update(payload)
-        .eq("id", editingItem.id)
-        .select();
-
-      if (error) {
-        console.error("🔴 Update failed:", error);
-        toast.error("Update failed");
-        return;
-      }
-
+        .eq("id", editingItem.id);
       toast.success("Item updated");
     } else {
-      /* ---------- INSERT ---------- */
-      const { data, error } = await supabase
-        .from("menu_items")
-        .insert(payload)
-        .select();
-
-      if (error) {
-        console.error("🔴 Insert failed:", error);
-        toast.error(error.message || "Insert failed");
-        return;
-      }
-
+      await supabase.from("menu_items").insert(payload);
       toast.success("Item added");
     }
 
@@ -231,6 +263,7 @@ export default function AdminItems() {
   }
 
   /* ---------------- DELETE ---------------- */
+
   async function confirmDelete() {
     if (!deleteItem) return;
 
@@ -244,11 +277,7 @@ export default function AdminItems() {
     load(true);
   }
 
-  const filteredSubs = subcategories.filter(
-    (s) => s.category_id === categoryId,
-  );
-
-  /* ---------------- REALTIME SUBSCRIPTION ---------------- */
+  /* ---------------- REALTIME ---------------- */
 
   useEffect(() => {
     const channel = supabase
@@ -258,7 +287,7 @@ export default function AdminItems() {
         { event: "*", schema: "public", table: "menu_items" },
         () => {
           localStorage.removeItem(CACHE_KEY);
-          load(true); // 👈 FORCE fresh fetch
+          load(true);
         },
       )
       .subscribe();
@@ -269,6 +298,7 @@ export default function AdminItems() {
   }, []);
 
   /* ---------------- UI ---------------- */
+
   return (
     <div className="space-y-5 max-w-3xl mx-auto">
       <BackButton />
@@ -294,6 +324,46 @@ export default function AdminItems() {
         </button>
       </div>
 
+      {/* Category Filter Tabs */}
+      <div className="relative">
+        <div className="flex gap-3 overflow-x-auto no-scrollbar py-2">
+          {/* All Tab */}
+          <button
+            onClick={() => {
+              haptic("light");
+              setActiveCategoryFilter("all");
+            }}
+            className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition ${
+              activeCategoryFilter === "all"
+                ? "bg-[var(--brand-primary)] text-white shadow-md"
+                : "bg-gray-100 text-gray-600"
+            }`}
+          >
+            All
+          </button>
+
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => {
+                haptic("light");
+                setActiveCategoryFilter(cat.id);
+              }}
+              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition ${
+                activeCategoryFilter === cat.id
+                  ? "bg-[var(--brand-primary)] text-white shadow-md"
+                  : "bg-gray-100 text-gray-600"
+              }`}
+            >
+              {cat.name}
+            </button>
+          ))}
+        </div>
+
+        {/* Subtle bottom fade for scroll hint */}
+        <div className="pointer-events-none absolute right-0 top-0 h-full w-6 bg-gradient-to-l from-white to-transparent" />
+      </div>
+
       <input
         className="w-full rounded-xl bg-white shadow-sm px-4 py-3 text-sm focus:outline-none"
         placeholder="Search items…"
@@ -301,7 +371,7 @@ export default function AdminItems() {
         onChange={(e) => setSearch(e.target.value)}
       />
 
-      {/* Items */}
+      {/* Items List unchanged */}
       <div className="space-y-3">
         {paginatedItems.map((item) => (
           <div
@@ -309,10 +379,7 @@ export default function AdminItems() {
             className="bg-white rounded-2xl shadow-sm p-4 flex gap-4 items-center"
           >
             <div
-              onClick={() => {
-                haptic("light");
-                openEditModal(item);
-              }}
+              onClick={() => openEditModal(item)}
               className="flex gap-4 flex-1 cursor-pointer"
             >
               {item.image_url && (
@@ -326,9 +393,7 @@ export default function AdminItems() {
                 <p className="text-sm text-gray-500">{item.description}</p>
                 <p
                   className="text-sm font-bold"
-                  style={{
-                    color: "var(--brand-primary)",
-                  }}
+                  style={{ color: "var(--brand-primary)" }}
                 >
                   KES {item.price?.toLocaleString()}
                 </p>
@@ -339,7 +404,6 @@ export default function AdminItems() {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                haptic("medium");
                 setDeleteItem(item);
               }}
               className="p-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50"
@@ -491,6 +555,7 @@ export default function AdminItems() {
                 onChange={(e) => {
                   setCategoryId(e.target.value);
                   setSubcategoryId("");
+                  setSelectedChain([]);
                 }}
               >
                 <option value="">Category</option>
@@ -501,18 +566,40 @@ export default function AdminItems() {
                 ))}
               </select>
 
+              {/* 🔥 Dynamic Subcategories */}
               <select
                 className="w-full rounded-xl bg-gray-100 px-4 py-2"
-                value={subcategoryId}
-                onChange={(e) => setSubcategoryId(e.target.value)}
+                value={selectedChain[0] || ""}
+                onChange={(e) => handleSubSelect(0, e.target.value)}
               >
                 <option value="">Subcategory</option>
-                {filteredSubs.map((s) => (
+                {topLevelSubs.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
                   </option>
                 ))}
               </select>
+
+              {selectedChain.map((parentId, index) => {
+                const children = getChildren(parentId);
+                if (!children.length) return null;
+
+                return (
+                  <select
+                    key={parentId}
+                    className="w-full rounded-xl bg-gray-100 px-4 py-2"
+                    value={selectedChain[index + 1] || ""}
+                    onChange={(e) => handleSubSelect(index + 1, e.target.value)}
+                  >
+                    <option value="">Select Subcategory</option>
+                    {children.map((child) => (
+                      <option key={child.id} value={child.id}>
+                        {child.name}
+                      </option>
+                    ))}
+                  </select>
+                );
+              })}
 
               <button
                 className="w-full border rounded-xl py-2"

@@ -11,6 +11,8 @@ export default function PublicItems() {
   const [subcategory, setSubcategory] = useState(null);
   const [category, setCategory] = useState(null);
   const [items, setItems] = useState([]);
+  const [children, setChildren] = useState([]);
+  const [activeTab, setActiveTab] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const VARIANT_ORDER = [
@@ -23,14 +25,16 @@ export default function PublicItems() {
     "Large",
   ];
 
-  const CACHE_KEY = `public_items_${subcategoryId}`;
   const TTL_MINUTES = 10;
 
   /* ---------------- LOAD ---------------- */
-  async function load(force = false) {
+  async function load(force = false, overrideTab = null) {
+    const targetId = overrideTab || activeTab || subcategoryId;
+    const CACHE_KEY = `public_items_${targetId}`;
+
     setLoading(true);
 
-    // 1️⃣ Try cache first (unless forced)
+    // 1️⃣ CACHE CHECK
     if (!force) {
       try {
         const cachedRaw = localStorage.getItem(CACHE_KEY);
@@ -42,7 +46,8 @@ export default function PublicItems() {
             setSubcategory(cached.subcategory);
             setCategory(cached.category);
             setItems(cached.items);
-
+            setChildren(cached.children || []);
+            setActiveTab(targetId);
             setLoading(false);
             return;
           } else {
@@ -84,11 +89,27 @@ export default function PublicItems() {
 
     setCategory(cat);
 
-    // 4️⃣ Fetch items
+    // 4️⃣ Fetch children (tabs)
+    const { data: childSubs } = await supabase
+      .from("subcategories")
+      .select("*")
+      .eq("parent_id", subcategoryId)
+      .order("sort_order", { ascending: true });
+
+    setChildren(childSubs || []);
+
+    const resolvedTargetId =
+      childSubs && childSubs.length > 0
+        ? overrideTab || childSubs[0].id
+        : subcategoryId;
+
+    setActiveTab(resolvedTargetId);
+
+    // 5️⃣ Fetch items
     const { data: its, error: itemErr } = await supabase
       .from("menu_items")
       .select("*")
-      .eq("subcategory_id", subcategoryId)
+      .eq("subcategory_id", resolvedTargetId)
       .order("sort_order", { ascending: true });
 
     if (itemErr) {
@@ -116,14 +137,11 @@ export default function PublicItems() {
       // Normalize keys (Cup, Teapot, etc.)
       if (variantsObj && typeof variantsObj === "object") {
         const cleaned = {};
-
         Object.keys(variantsObj).forEach((k) => {
           const normalizedKey =
             k.charAt(0).toUpperCase() + k.slice(1).toLowerCase();
-
           cleaned[normalizedKey] = variantsObj[k];
         });
-
         variantsObj = cleaned;
       }
 
@@ -135,13 +153,14 @@ export default function PublicItems() {
 
     setItems(normalizedItems);
 
-    // 3️⃣ Save to cache
+    // 6️⃣ Save to cache
     localStorage.setItem(
-      CACHE_KEY,
+      `public_items_${resolvedTargetId}`,
       JSON.stringify({
         subcategory: sub,
         category: cat,
         items: normalizedItems,
+        children: childSubs || [],
         timestamp: Date.now(),
       }),
     );
@@ -151,19 +170,22 @@ export default function PublicItems() {
 
   /* ---------------- REALTIME ---------------- */
   useEffect(() => {
+    const targetId = activeTab || subcategoryId;
+    const CACHE_KEY = `public_items_${targetId}`;
+
     const channel = supabase
-      .channel(`public-items-changes-${subcategoryId}`)
+      .channel(`public-items-changes-${targetId}`)
       .on(
         "postgres_changes",
         {
           event: "*",
           schema: "public",
           table: "menu_items",
-          filter: `subcategory_id=eq.${subcategoryId}`,
+          filter: `subcategory_id=eq.${targetId}`,
         },
-        (payload) => {
+        () => {
           localStorage.removeItem(CACHE_KEY);
-          load(true); // 👈 force refresh
+          load(true, targetId);
         },
       )
       .subscribe();
@@ -171,7 +193,7 @@ export default function PublicItems() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [subcategoryId]);
+  }, [subcategoryId, activeTab]);
 
   /* ---------------- INITIAL LOAD ---------------- */
   useEffect(() => {
@@ -191,11 +213,30 @@ export default function PublicItems() {
 
       {/* Heading */}
       <h1
-        className="text-2xl font-semibold text-center mt-2 mb-4"
+        className="text-2xl font-semibold text-center mt-2 mb-3"
         style={{ color: "var(--brand-primary)" }}
       >
         {subcategory?.name}
       </h1>
+
+      {/* TABS */}
+      {children.length > 0 && (
+        <div className="flex justify-start gap-3 mb-4">
+          {children.map((child) => (
+            <button
+              key={child.id}
+              onClick={() => load(false, child.id)}
+              className={`px-4 py-1 rounded-full text-sm font-medium transition ${
+                activeTab === child.id
+                  ? "bg-[var(--brand-primary)] text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              {child.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* CARD */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">

@@ -14,58 +14,31 @@ export default function Footer() {
             Available on:
           </p>
 
-          <a
-            href="https://food.bolt.eu/en/p/188508-kt-cafe-restaurant/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:opacity-80 transition border rounded"
+          <button
+            onClick={() => {
+              const boltAppLink = "boltfood://restaurant/188508";
+              const fallbackLink =
+                "https://food.bolt.eu/en/p/188508-kt-cafe-restaurant/";
+
+              window.location.href = boltAppLink;
+
+              setTimeout(() => {
+                window.location.href = fallbackLink;
+              }, 1500);
+            }}
+            className="hover:opacity-80 transition border rounded-lg"
           >
             <img
               src="/Bolt.svg"
               alt="Bolt Food"
-              className="w-15 h-15 object-contain"
+              className="w-[60px] h-[60px] object-contain"
             />
-          </a>
+          </button>
         </div>
 
         <p style={{ color: "var(--brand-bg-dark)" }} className="text-sm">
           © {new Date().getFullYear()} KT Cafe. All rights reserved.
         </p>
-
-        {/* <div className="flex gap-3">
-          <a
-            href="https://www.instagram.com/kulatam_/"
-            className="p-2 rounded-full border"
-            style={{
-              borderColor: "var(--brand-primary)",
-              color: "var(--brand-primary)",
-            }}
-          >
-            <FiInstagram size={16} />
-          </a>
-
-          <a
-            href="https://www.tiktok.com/@kulatam_?_r=1&_t=ZS-93VgTSXig44"
-            className="p-2 rounded-full border"
-            style={{
-              borderColor: "var(--brand-primary)",
-              color: "var(--brand-primary)",
-            }}
-          >
-            <FaTiktok size={16} />
-          </a>
-
-          <a
-            href="tel:+254100931818"
-            className="p-2 rounded-full border"
-            style={{
-              borderColor: "var(--brand-primary)",
-              color: "var(--brand-primary)",
-            }}
-          >
-            <FiPhone size={16} />
-          </a>
-        </div> */}
       </div>
     </footer>
   );

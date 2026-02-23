@@ -39,6 +39,7 @@ export default function PublicSubcategories() {
       }
     }
 
+    /* -------- CATEGORY -------- */
     const { data: cat, error: catErr } = await supabase
       .from("categories")
       .select("id, name")
@@ -51,10 +52,12 @@ export default function PublicSubcategories() {
       return;
     }
 
+    /* -------- SUBCATEGORIES (TOP LEVEL ONLY) -------- */
     const { data: subs, error: subErr } = await supabase
       .from("subcategories")
       .select("*")
       .eq("category_id", categoryId)
+      .is("parent_id", null)
       .order("sort_order", { ascending: true });
 
     if (subErr) {
@@ -157,8 +160,6 @@ export default function PublicSubcategories() {
         animate="show"
       >
         {subcategories.map((sub) => {
-          const normalizedName = sub.name.trim();
-
           const image = sub.image_url || "/subcategory-images/default.jpeg";
 
           return (

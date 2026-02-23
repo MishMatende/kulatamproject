@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabase";
-import { useParams, Link } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import BackButton from "../components/BackButton";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -12,6 +12,8 @@ export default function AdminSubcategories() {
   const [subcategories, setSubcategories] = useState([]);
   const [newName, setNewName] = useState("");
   const [newSort, setNewSort] = useState("");
+  const [parentId, setParentId] = useState("");
+  const [expanded, setExpanded] = useState({});
 
   // Delete modal state
   const [deleteSub, setDeleteSub] = useState(null);
@@ -51,7 +53,6 @@ export default function AdminSubcategories() {
       .single();
 
     if (catErr) {
-      console.error("🔴 Category load failed:", catErr);
       toast.error("Failed to load category");
       return;
     }
@@ -63,7 +64,6 @@ export default function AdminSubcategories() {
       .order("sort_order", { ascending: true });
 
     if (subErr) {
-      console.error("🔴 Subcategories load failed:", subErr);
       toast.error("Failed to load subcategories");
       return;
     }
@@ -95,6 +95,7 @@ export default function AdminSubcategories() {
       name: newName,
       sort_order: newSort ? parseInt(newSort) : null,
       category_id: categoryId,
+      parent_id: parentId || null, // ✅ ADDED
     });
 
     if (error) {
@@ -105,8 +106,9 @@ export default function AdminSubcategories() {
     toast.success("Subcategory added");
     setNewName("");
     setNewSort("");
+    setParentId("");
     localStorage.removeItem(CACHE_KEY);
-    load(true); // 👈 force refresh
+    load(true);
   }
 
   /* ---------------- UPDATE ---------------- */
@@ -128,7 +130,7 @@ export default function AdminSubcategories() {
 
   /* ---------------- UPLOAD IMAGE ---------------- */
   async function uploadImage(sub, file) {
-    if (!file) return;
+    if (!file || sub.parent_id) return; // ✅ children don't upload images
 
     try {
       setUploadingId(sub.id);
@@ -141,7 +143,6 @@ export default function AdminSubcategories() {
         .upload(filePath, file, { upsert: true });
 
       if (uploadErr) {
-        console.error("🔴 Upload failed:", uploadErr);
         toast.error("Image upload failed");
         return;
       }
@@ -150,23 +151,14 @@ export default function AdminSubcategories() {
         data: { publicUrl },
       } = supabase.storage.from("subcategory-images").getPublicUrl(filePath);
 
-      const { error: updateErr } = await supabase
+      await supabase
         .from("subcategories")
         .update({ image_url: publicUrl })
         .eq("id", sub.id);
 
-      if (updateErr) {
-        console.error("🔴 DB update failed:", updateErr);
-        toast.error("Failed to save image");
-        return;
-      }
-
       toast.success("Image updated");
       localStorage.removeItem(CACHE_KEY);
       load(true);
-    } catch (err) {
-      console.error("🔴 Upload crash:", err);
-      toast.error("Upload crashed");
     } finally {
       setUploadingId(null);
     }
@@ -182,7 +174,6 @@ export default function AdminSubcategories() {
       .eq("id", deleteSub.id);
 
     if (error) {
-      console.error("🔴 Delete failed:", error);
       toast.error("Failed to delete subcategory");
       return;
     }
@@ -191,6 +182,13 @@ export default function AdminSubcategories() {
     setDeleteSub(null);
     localStorage.removeItem(CACHE_KEY);
     load(true);
+  }
+
+  function toggleParent(id) {
+    setExpanded((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
   }
 
   /* ---------------- REALTIME ---------------- */
@@ -223,6 +221,9 @@ export default function AdminSubcategories() {
   }, [categoryId]);
 
   /* ---------------- UI ---------------- */
+
+  const topLevel = subcategories.filter((s) => !s.parent_id);
+
   return (
     <div className="space-y-6 max-w-xl mx-auto">
       <BackButton />
@@ -238,27 +239,37 @@ export default function AdminSubcategories() {
       {/* Add Subcategory */}
       <form
         onSubmit={addSubcategory}
-        className="rounded-2xl bg-white p-4 shadow-sm border border-gray-200 flex gap-2"
+        className="rounded-2xl bg-white p-4 shadow-sm border border-gray-200 flex flex-col sm:flex-row gap-2"
       >
         <input
-          className="flex-1 rounded-xl border border-gray-300 px-3 py-2 text-sm
-                     focus:outline-none focus:ring-2 focus:ring-black"
+          className="w-full sm:flex-1 rounded-xl border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
           placeholder="Subcategory name"
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
         />
         <input
-          className="w-20 rounded-xl border border-gray-300 px-2 py-2 text-sm
-                     focus:outline-none focus:ring-2 focus:ring-black"
+          className="w-full sm:w-20 rounded-xl border border-gray-300 px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black"
           type="number"
           placeholder="Sort"
           value={newSort}
           onChange={(e) => setNewSort(e.target.value)}
         />
-        <button
-          className="rounded-xl bg-black text-white px-4 py-2 text-sm font-medium
-                     active:scale-95 transition"
+
+        {/* ✅ Parent Selector */}
+        <select
+          className="w-full sm:w-auto rounded-xl border border-gray-300 px-2 py-2 text-sm"
+          value={parentId}
+          onChange={(e) => setParentId(e.target.value)}
         >
+          <option value="">Top Level</option>
+          {topLevel.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+
+        <button className="w-full sm:w-auto rounded-xl bg-black text-white px-4 py-2 text-sm font-medium active:scale-95 transition">
           Add
         </button>
       </form>
@@ -279,76 +290,130 @@ export default function AdminSubcategories() {
 
       {/* Subcategory List */}
       <div className="space-y-3">
-        {subcategories.map((sub) => (
-          <div
-            key={sub.id}
-            className="rounded-2xl bg-white p-4 shadow-sm border border-gray-200 space-y-3"
-          >
-            {/* Image Preview */}
-            <div className="rounded-xl bg-gray-100 h-40 flex items-center justify-center overflow-hidden">
-              {sub.image_url ? (
-                <img
-                  src={sub.image_url}
-                  className="w-full h-full object-cover"
-                  alt={sub.name}
+        {topLevel.map((parent) => (
+          <div key={parent.id} className="space-y-3">
+            <div className="rounded-2xl bg-white p-4 shadow-sm border border-gray-200 space-y-3">
+              {/* Parent Header */}
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-gray-600">
+                  {parent.name}
+                </span>
+
+                {subcategories.some((s) => s.parent_id === parent.id) && (
+                  <button
+                    onClick={() => toggleParent(parent.id)}
+                    className="text-sm font-medium text-gray-500"
+                  >
+                    {expanded[parent.id] ? "Hide" : "Show"}
+                  </button>
+                )}
+              </div>
+              {/* Image Preview */}
+              <div className="rounded-xl bg-gray-100 h-40 flex items-center justify-center overflow-hidden">
+                {parent.image_url ? (
+                  <img
+                    src={parent.image_url}
+                    className="w-full h-full object-cover"
+                    alt={parent.name}
+                  />
+                ) : (
+                  <span className="text-sm text-gray-400">
+                    No image uploaded
+                  </span>
+                )}
+              </div>
+
+              {/* Inputs Row */}
+              <div className="flex items-center gap-2">
+                <input
+                  className="flex-1 rounded-xl border border-gray-300 px-3 py-2 text-sm
+                           focus:outline-none focus:ring-2 focus:ring-black"
+                  defaultValue={parent.name}
+                  onBlur={(e) => updateField(parent.id, "name", e.target.value)}
                 />
-              ) : (
-                <span className="text-sm text-gray-400">No image uploaded</span>
-              )}
-            </div>
-
-            {/* Inputs Row */}
-            <div className="flex items-center gap-2">
-              <input
-                className="flex-1 rounded-xl border border-gray-300 px-3 py-2 text-sm
+                <input
+                  className="w-20 rounded-xl border border-gray-300 px-2 py-2 text-sm
                            focus:outline-none focus:ring-2 focus:ring-black"
-                defaultValue={sub.name}
-                onBlur={(e) => updateField(sub.id, "name", e.target.value)}
-              />
-              <input
-                className="w-20 rounded-xl border border-gray-300 px-2 py-2 text-sm
-                           focus:outline-none focus:ring-2 focus:ring-black"
-                type="number"
-                defaultValue={sub.sort_order}
-                onBlur={(e) =>
-                  updateField(
-                    sub.id,
-                    "sort_order",
-                    e.target.value ? parseInt(e.target.value) : null,
-                  )
-                }
-              />
+                  type="number"
+                  defaultValue={parent.sort_order}
+                  onBlur={(e) =>
+                    updateField(
+                      parent.id,
+                      "sort_order",
+                      e.target.value ? parseInt(e.target.value) : null,
+                    )
+                  }
+                />
+              </div>
 
-              <button
-                onClick={() => setDeleteSub(sub)}
-                className="text-sm font-medium text-red-600"
-              >
-                Delete
-              </button>
+              {/* Upload Button */}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  ref={(el) => (fileInputRefs.current[parent.id] = el)}
+                  onChange={(e) => uploadImage(parent, e.target.files[0])}
+                />
+
+                {/* Upload Button */}
+                <button
+                  onClick={() => fileInputRefs.current[parent.id]?.click()}
+                  disabled={uploadingId === parent.id}
+                  className="flex-1 rounded-xl border py-2 text-sm font-medium"
+                  style={{
+                    borderColor: "var(--brand-primary)",
+                    color: "var(--brand-primary)",
+                  }}
+                >
+                  {uploadingId === parent.id ? "Uploading..." : "Upload Image"}
+                </button>
+
+                {/* Delete Button */}
+                <button
+                  onClick={() => setDeleteSub(parent)}
+                  className="flex-1 sm:flex-none rounded-xl border border-red-600 text-red-600 py-2 px-4 text-sm font-medium"
+                >
+                  Delete
+                </button>
+              </div>
             </div>
 
-            {/* Upload Button */}
-            <div>
-              <input
-                type="file"
-                accept="image/*"
-                hidden
-                ref={(el) => (fileInputRefs.current[sub.id] = el)}
-                onChange={(e) => uploadImage(sub, e.target.files[0])}
-              />
+            {/* Children (same style but indented) */}
+            <AnimatePresence>
+              {expanded[parent.id] &&
+                subcategories
+                  .filter((s) => s.parent_id === parent.id)
+                  .map((child) => (
+                    <motion.div
+                      key={child.id}
+                      initial={{ opacity: 0, y: -8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -8 }}
+                      transition={{ duration: 0.2 }}
+                      className="ml-4 sm:ml-8"
+                    >
+                      <div className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 hover:bg-gray-100 transition">
+                        {/* Name Input */}
+                        <input
+                          className="flex-1 bg-transparent outline-none text-sm font-medium text-gray-700"
+                          defaultValue={child.name}
+                          onBlur={(e) =>
+                            updateField(child.id, "name", e.target.value)
+                          }
+                        />
 
-              <button
-                onClick={() => fileInputRefs.current[sub.id]?.click()}
-                disabled={uploadingId === sub.id}
-                className="w-full rounded-xl border py-2 flex items-center justify-center gap-2 text-sm font-medium"
-                style={{
-                  borderColor: "var(--brand-primary)",
-                  color: "var(--brand-primary)",
-                }}
-              >
-                {uploadingId === sub.id ? "Uploading..." : "Upload Image"}
-              </button>
-            </div>
+                        {/* Delete Button */}
+                        <button
+                          onClick={() => setDeleteSub(child)}
+                          className="ml-3 text-xs font-semibold text-red-500 hover:text-red-600 transition"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </motion.div>
+                  ))}
+            </AnimatePresence>
           </div>
         ))}
 

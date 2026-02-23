@@ -96,7 +96,7 @@ export default function AdminLayout() {
         </main>
 
         {/* 👤 Signed-in info (bottom-left) */}
-        {user && (
+        {/* {user && (
           <div
             className="fixed bottom-3 left-3 rounded-xl px-3 py-2 shadow-sm border bg-white"
             style={{ borderColor: "var(--brand-primary)" }}
@@ -106,7 +106,7 @@ export default function AdminLayout() {
               {user.email}
             </p>
           </div>
-        )}
+        )} */}
       </div>
     </div>
   );
