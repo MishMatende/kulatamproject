@@ -32,6 +32,9 @@ export default function AdminItems() {
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
 
+  const [showVariants, setShowVariants] = useState(false);
+  const [variantRows, setVariantRows] = useState([{ name: "", price: "" }]);
+
   // Search + pagination
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -185,6 +188,21 @@ export default function AdminItems() {
   }
 
   function openEditModal(item) {
+    if (item.variants) {
+      setShowVariants(true);
+
+      const rows = Object.entries(item.variants).map(([key, value]) => ({
+        name: key,
+        price: value,
+      }));
+
+      setVariantRows(rows);
+      setPrice("");
+    } else {
+      setShowVariants(false);
+      setVariantRows([{ name: "", price: "" }]);
+    }
+
     setEditingItem(item);
     setName(item.name);
     setDesc(item.description || "");
@@ -203,8 +221,18 @@ export default function AdminItems() {
     e.preventDefault();
     haptic("medium");
 
-    if (!name || !price || !categoryId || !subcategoryId) {
-      toast.error("Name, price, category & subcategory required");
+    if (!name || !categoryId || !subcategoryId) {
+      toast.error("Name, category & subcategory required");
+      return;
+    }
+
+    if (!showVariants && !price) {
+      toast.error("Price required");
+      return;
+    }
+
+    if (showVariants && variantRows.some((v) => !v.name || !v.price)) {
+      toast.error("All variants must have name & price");
       return;
     }
 
@@ -236,10 +264,23 @@ export default function AdminItems() {
     }
 
     /* ---------- PAYLOAD ---------- */
+    let variantsObject = null;
+    let finalPrice = null;
+
+    if (showVariants) {
+      variantsObject = {};
+      variantRows.forEach((v) => {
+        variantsObject[v.name] = Number(v.price);
+      });
+    } else {
+      finalPrice = Number(price);
+    }
+
     const payload = {
       name,
       description: desc,
-      price: Number(price),
+      price: finalPrice,
+      variants: variantsObject,
       category_id: categoryId,
       subcategory_id: subcategoryId,
       image_url: imageUrl,
@@ -533,13 +574,129 @@ export default function AdminItems() {
                 onChange={(e) => setName(e.target.value)}
               />
 
-              <input
-                type="number"
-                className="w-full rounded-xl bg-gray-100 px-4 py-2"
-                placeholder="Price (KES)"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-              />
+              {/* Price / Variants Toggle */}
+              <div className="space-y-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-sm font-medium text-gray-600">
+                    {showVariants ? "Variants" : "Price"}
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowVariants(!showVariants);
+                      setPrice("");
+                    }}
+                    className="text-xs font-semibold"
+                    style={{ color: "var(--brand-primary)" }}
+                  >
+                    {showVariants ? "Price" : "Variants"}
+                  </button>
+                </div>
+
+                {/* ---------------- PRICE MODE ---------------- */}
+                {!showVariants ? (
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    className="w-full rounded-xl bg-gray-100 px-4 py-2"
+                    placeholder="Price (KES)"
+                    value={price}
+                    onChange={(e) => {
+                      const formatted = formatNumber(e.target.value);
+                      setPrice(formatted);
+                    }}
+                  />
+                ) : (
+                  /* ---------------- VARIANTS MODE ---------------- */
+                  <div className="space-y-2">
+                    {variantRows.map((row, index) => (
+                      <div key={index} className="flex gap-2">
+                        <input
+                          className="flex-1 rounded-xl bg-gray-100 px-3 py-2"
+                          placeholder="Variant name (e.g. Large)"
+                          value={row.name}
+                          onChange={(e) => {
+                            const updated = [...variantRows];
+                            updated[index].name = e.target.value;
+                            setVariantRows(updated);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              document
+                                .getElementById(`variant-price-${index}`)
+                                ?.focus();
+                            }
+                          }}
+                        />
+
+                        <input
+                          id={`variant-price-${index}`}
+                          type="text"
+                          inputMode="numeric"
+                          className="w-28 rounded-xl bg-gray-100 px-3 py-2"
+                          placeholder="Price"
+                          value={row.price}
+                          onChange={(e) => {
+                            const formatted = formatNumber(e.target.value);
+                            const updated = [...variantRows];
+                            updated[index].price = formatted;
+                            setVariantRows(updated);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              if (index === variantRows.length - 1) {
+                                setVariantRows([
+                                  ...variantRows,
+                                  { name: "", price: "" },
+                                ]);
+                              }
+                              setTimeout(() => {
+                                document
+                                  .getElementById(`variant-name-${index + 1}`)
+                                  ?.focus();
+                              }, 50);
+                            }
+                          }}
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = variantRows.filter(
+                              (_, i) => i !== index,
+                            );
+                            setVariantRows(
+                              updated.length
+                                ? updated
+                                : [{ name: "", price: "" }],
+                            );
+                          }}
+                          className="p-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50"
+                        >
+                          <FiTrash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setVariantRows([
+                          ...variantRows,
+                          { name: "", price: "" },
+                        ])
+                      }
+                      className="text-sm font-medium"
+                      style={{ color: "var(--brand-primary)" }}
+                    >
+                      + Add Variant
+                    </button>
+                  </div>
+                )}
+              </div>
 
               <textarea
                 className="w-full rounded-xl bg-gray-100 px-4 py-2"

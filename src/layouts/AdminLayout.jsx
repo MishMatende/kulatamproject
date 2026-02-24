@@ -8,6 +8,7 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [user, setUser] = useState(null);
+  const [showSignedIn, setShowSignedIn] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
@@ -25,6 +26,7 @@ export default function AdminLayout() {
 
       setUser(session.user);
       setCheckingAuth(false);
+      setShowSignedIn(true);
     }
 
     checkAuth();
@@ -45,6 +47,16 @@ export default function AdminLayout() {
     toast.success("Logged out");
     navigate("/admin/login", { replace: true });
   }
+
+  useEffect(() => {
+    if (!showSignedIn) return;
+
+    const timer = setTimeout(() => {
+      setShowSignedIn(false);
+    }, 8000);
+
+    return () => clearTimeout(timer);
+  }, [showSignedIn]);
 
   if (checkingAuth) {
     return <LoadingScreen />;
@@ -96,9 +108,9 @@ export default function AdminLayout() {
         </main>
 
         {/* 👤 Signed-in info (bottom-left) */}
-        {/* {user && (
+        {user && showSignedIn && (
           <div
-            className="fixed bottom-3 left-3 rounded-xl px-3 py-2 shadow-sm border bg-white"
+            className="fixed bottom-3 left-3 rounded-xl px-3 py-2 shadow-sm border bg-white transition-opacity duration-500"
             style={{ borderColor: "var(--brand-primary)" }}
           >
             <p className="text-[11px] text-gray-500">Signed in as</p>
@@ -106,7 +118,7 @@ export default function AdminLayout() {
               {user.email}
             </p>
           </div>
-        )} */}
+        )}
       </div>
     </div>
   );
