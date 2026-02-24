@@ -36,7 +36,7 @@ export default function Footer() {
                 onClick={() => {
                   const boltAppLink = "boltfood://restaurant/188508";
                   const fallbackLink =
-                    "https://food.bolt.eu/en/p/188508-kt-cafe-restaurant/";
+                    "https://food.bolt.eu/en/320-nairobi/p/188508-kt-cafe-restaurant/?utm_source=google_integration";
 
                   window.location.href = boltAppLink;
 
