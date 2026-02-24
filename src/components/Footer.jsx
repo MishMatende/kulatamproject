@@ -32,7 +32,7 @@ export default function Footer() {
             </p>
 
             <div className="flex justify-center">
-              <button
+              {/* <button
                 onClick={() => {
                   const boltAppLink = "boltfood://restaurant/188508";
                   const fallbackLink =
@@ -51,7 +51,8 @@ export default function Footer() {
                   boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
                 }}
               >
-                {/* White logo container */}
+                {/* White logo container */}{" "}
+              {/*}
                 <span className="bg-white rounded-md">
                   <img
                     src="/Bolt.svg"
@@ -60,12 +61,32 @@ export default function Footer() {
                   />
                 </span>
                 Order on Bolt
-              </button>
+              </button> */}
+              <a
+                href="https://food.bolt.eu/en/320-nairobi/p/188508-kt-cafe-restaurant/?utm_source=google_integration&utm_medium=website&utm_campaign=footer_cta"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group inline-flex items-center gap-3 px-5 py-3 rounded-2xl font-semibold text-sm transition-all duration-300 active:scale-95"
+                style={{
+                  background: "var(--brand-primary)",
+                  color: "white",
+                  boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
+                }}
+              >
+                <span className="bg-white rounded-md">
+                  <img
+                    src="/Bolt.svg"
+                    alt="Bolt Food"
+                    className="w-7 h-7 object-contain"
+                  />
+                </span>
+                Order on Bolt
+              </a>
             </div>
           </div>
 
           {/* Brand + Location - RIGHT (LEFT ALIGNED TEXT) */}
-          <div className="space-y-2 text-left">
+          <div className="space-y-2 text-left md:text-center">
             <h2
               className="text-xl font-semibold tracking-wide"
               style={{ color: "var(--brand-bg-dark)" }}
