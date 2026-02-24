@@ -21,7 +21,7 @@ export default function Header() {
             </h1>
 
             {/* Coffee | Tea | Fast Meals */}
-            <div className="text-[10px] tracking-[0.28em] text-gray-600 mt-[3px] leading-none font-medium">
+            <div className="text-[10px] tracking-[0.28em] text-gray-600 mt-[3px] leading-none font-bold">
               COFFEE <span className="text-[#9C5E00]">|</span> TEA{" "}
               <span className="text-[#9C5E00]">|</span> FAST MEALS
             </div>
