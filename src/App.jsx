@@ -14,6 +14,7 @@ import LoadingScreen from "./components/LoadingScreen";
 import AdminLayout from "./layouts/AdminLayout";
 import ResetPassword from "./pages/ResetPassword";
 import AdminPoster from "./pages/AdminPoster";
+import QrAnalytics from "./pages/QrAnalytics";
 
 export default function App() {
   const [loading, setLoading] = useState(true);
@@ -49,6 +50,7 @@ export default function App() {
         <Route path="/admin/categories" element={<AdminCategories />} />
         <Route path="/admin/items" element={<AdminItems />} />
         <Route path="/admin/posters" element={<AdminPoster />} />
+        <Route path="/admin/qr-analytics" element={<QrAnalytics />} />
 
         <Route
           path="/admin/categories/:categoryId/subcategories"

@@ -110,6 +110,27 @@ export default function AdminDashboard() {
             </div>
           </Link>
         </motion.div>
+
+        {/* QR Code Analytics - NEW */}
+        <motion.div variants={cardVariants}>
+          <Link
+            to="/admin/qr-analytics"
+            className="block rounded-2xl bg-white p-5 shadow-sm border border-gray-200
+                       active:scale-[0.97] transition"
+          >
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-xl bg-yellow-100 text-yellow-600 flex items-center justify-center text-xl">
+                📊
+              </div>
+              <div>
+                <h2 className="font-semibold">QR Code Analytics</h2>
+                <p className="text-sm text-gray-500">
+                  Track scans and customer activity
+                </p>
+              </div>
+            </div>
+          </Link>
+        </motion.div>
       </motion.div>
     </div>
   );

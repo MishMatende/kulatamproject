@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { analyticsSupabase } from "../../lib/analyticsSupabase";
+import { analyticsSupabase } from "../lib/analyticsSupabase";
 import {
   LineChart,
   Line,
@@ -11,6 +11,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import BackButton from "../components/BackButton";
 
 const QR_ID = "13803aa5-84ee-4161-978e-871e5b4f8788";
 
@@ -143,6 +144,7 @@ export default function QrAnalytics() {
 
   return (
     <div className="space-y-8">
+      <BackButton />
       <h1 className="text-xl font-semibold">QR Code Analytics</h1>
 
       {/* SUMMARY CARDS */}

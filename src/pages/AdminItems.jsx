@@ -603,7 +603,7 @@ export default function AdminItems() {
                     placeholder="Price (KES)"
                     value={price}
                     onChange={(e) => {
-                      const formatted = formatNumber(e.target.value);
+                      const formatted = e.target.value;
                       setPrice(formatted);
                     }}
                   />
@@ -639,7 +639,7 @@ export default function AdminItems() {
                           placeholder="Price"
                           value={row.price}
                           onChange={(e) => {
-                            const formatted = formatNumber(e.target.value);
+                            const formatted = e.target.value;
                             const updated = [...variantRows];
                             updated[index].price = formatted;
                             setVariantRows(updated);

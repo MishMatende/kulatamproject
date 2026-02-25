@@ -137,7 +137,7 @@ export default function PublicHome() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, duration: 0.5 }}
-            className="mt-3 text-sm md:text-base text-white/90 max-w-lg"
+            className="mt-3 text-sm md:text-base text-white/90 max-w-lg font-semibold"
           >
             Step in, relax, and enjoy freshly prepared meals, handcrafted
             drinks, and a warm café atmosphere made just for you.
