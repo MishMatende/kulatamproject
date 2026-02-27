@@ -5,6 +5,20 @@ import MenuItemRow from "../components/MenuItemRow";
 import BackButton from "../components/BackButton";
 import LoadingScreen from "../components/LoadingScreen";
 
+const SIDE_DISHES = {
+  // Example using subcategory IDs:
+  "b8352788-f798-4235-a490-cdb4727d02a0": ["Fries", "Ugali", "Rice", "Chapati"], //Chicken Signature
+  "f868bc9d-81eb-40a5-b623-f5ab93f20090": ["Fries", "Ugali", "Rice", "Chapati"], // Beef Classics
+  "5482a32a-47f0-411e-bf2e-52a99a7200c5": [
+    "Fries",
+    "Ugali",
+    "Rice",
+    "Chapati",
+    "Mashed Potatoes",
+    "Potatoes Saute",
+  ], //Fish Specials
+};
+
 export default function PublicItems() {
   const { subcategoryId } = useParams();
 
@@ -221,6 +235,8 @@ export default function PublicItems() {
     items.some((item) => item.variants && item.variants[key] !== undefined),
   );
 
+  const currentSideDishes = SIDE_DISHES[activeTab || subcategoryId] || null;
+
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto">
       <BackButton />
@@ -232,6 +248,26 @@ export default function PublicItems() {
       >
         {subcategory?.name}
       </h1>
+
+      {/* Side Dish Banner */}
+      {currentSideDishes && (
+        <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-3 text-center">
+          <p className="text-xs font-semibold text-amber-700 mb-1">
+            Served With:
+          </p>
+
+          <div className="flex flex-wrap justify-center gap-2">
+            {currentSideDishes.map((dish) => (
+              <span
+                key={dish}
+                className="text-xs px-3 py-1 rounded-full bg-white border border-amber-200 text-amber-700"
+              >
+                {dish}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* TABS */}
       {children.length > 0 && (

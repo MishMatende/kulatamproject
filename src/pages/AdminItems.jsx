@@ -338,6 +338,17 @@ export default function AdminItems() {
     };
   }, []);
 
+  function getChildSubcategoryName(id) {
+    const sub = subcategories.find((s) => s.id === id);
+
+    // Only return name if it has a parent_id (meaning it's a child)
+    if (sub && sub.parent_id) {
+      return sub.name;
+    }
+
+    return null;
+  }
+
   /* ---------------- UI ---------------- */
 
   return (
@@ -430,14 +441,37 @@ export default function AdminItems() {
                 />
               )}
               <div>
-                <h3 className="font-semibold">{item.name}</h3>
+                <h3 className="font-semibold flex items-center gap-2">
+                  {item.name}
+
+                  {getChildSubcategoryName(item.subcategory_id) && (
+                    <span className="text-[10px] px-2 py-1 rounded-full bg-gray-100 text-gray-600 font-medium">
+                      {getChildSubcategoryName(item.subcategory_id)}
+                    </span>
+                  )}
+                </h3>
                 <p className="text-sm text-gray-500">{item.description}</p>
-                <p
-                  className="text-sm font-bold"
-                  style={{ color: "var(--brand-primary)" }}
-                >
-                  KES {item.price?.toLocaleString()}
-                </p>
+                {item.variants ? (
+                  <div className="text-sm space-y-1">
+                    {Object.entries(item.variants).map(([key, value]) => (
+                      <div
+                        key={key}
+                        className="flex gap-2 text-sm font-bold"
+                        style={{ color: "var(--brand-primary)" }}
+                      >
+                        <span>{key}</span>
+                        <span>KES {Number(value).toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p
+                    className="text-sm font-bold"
+                    style={{ color: "var(--brand-primary)" }}
+                  >
+                    KES {item.price?.toLocaleString()}
+                  </p>
+                )}
               </div>
             </div>
 
