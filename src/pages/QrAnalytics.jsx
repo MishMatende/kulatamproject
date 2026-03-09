@@ -58,6 +58,7 @@ export default function QrAnalytics() {
     setScans(data || []);
     setLastUpdated(new Date());
     setLoading(false);
+    console.log(data);
   }
 
   /* ===========================
