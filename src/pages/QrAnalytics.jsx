@@ -49,7 +49,7 @@ export default function QrAnalytics() {
   async function fetchScans() {
     setLoading(true);
 
-    const { data } = await analyticsSupabase
+    const { data, error } = await analyticsSupabase
       .from("qr_scans")
       .select("*")
       .eq("qr_code_id", QR_ID)
@@ -59,6 +59,8 @@ export default function QrAnalytics() {
     setLastUpdated(new Date());
     setLoading(false);
     console.log(data);
+
+    console.log("SUPABASE ERROR:", error);
   }
 
   /* ===========================
