@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import AnnouncementBanner from "../components/AnnouncementBanner";
 
 export default function PublicHome() {
   const [categories, setCategories] = useState([]);
@@ -99,8 +100,13 @@ export default function PublicHome() {
     });
   }
 
+  const googleReviewLink = "https://g.page/r/CXdP1Et3gXTPEBM/review";
+
   return (
     <div>
+      {/* ================= REVIEW BANNER ================= */}
+      <AnnouncementBanner googleReviewLink={googleReviewLink} />
+
       {/* ================= HERO ================= */}
       <section className="relative h-[50vh] md:h-[60vh] w-full overflow-hidden -mt-20 pt-20">
         <AnimatePresence>

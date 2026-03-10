@@ -2,10 +2,22 @@ export default function Footer() {
   const googleReviewLink = "https://g.page/r/CXdP1Et3gXTPEBM/review"; // replace
 
   return (
-    <footer className="relative w-full mt-10 bg-gradient-to-br from-white via-gray-50 to-white border-t">
-      <div className="max-w-6xl mx-auto px-6 py-8 space-y-8">
+    <footer className="relative w-full mt-5 bg-gradient-to-br from-white via-gray-50 to-white border-t">
+      <div className="max-w-6xl mx-auto px-6 pb-8 pt-4 space-y-8">
         {/* ⭐ Review Link */}
-        <div className="flex justify-center">
+        <div
+          className="flex flex-col items-center gap-3 py-4 px-6 rounded-xl mx-auto mb-6 max-w-2xl text-center"
+          style={{
+            background: "rgba(0,0,0,0.04)",
+            border: "1px solid rgba(0,0,0,0.08)",
+          }}
+        >
+          <p className="text-sm md:text-base">
+            ⭐ Enjoyed your experience at{" "}
+            <span className="font-semibold">KT Café</span>? Your feedback helps
+            us grow.
+          </p>
+
           <a
             href={googleReviewLink}
             target="_blank"
@@ -13,10 +25,11 @@ export default function Footer() {
             className="inline-flex items-center gap-2 px-5 py-2 rounded-full text-sm font-semibold transition hover:scale-105"
             style={{
               color: "var(--brand-primary)",
-              background: "rgba(0,0,0,0.04)",
+              background: "white",
+              border: "1px solid rgba(0,0,0,0.08)",
             }}
           >
-            ⭐ Leave us a Google Review
+            Leave us a Google Review
           </a>
         </div>
 

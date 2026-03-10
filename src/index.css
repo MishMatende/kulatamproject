@@ -86,3 +86,51 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+.announcement-bar {
+  width: 100%;
+  overflow: hidden;
+  background: rgba(183, 121, 31, 0.55);
+  backdrop-filter: blur(6px);
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 10px 0;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.announcement-track {
+  display: flex;
+  width: max-content;
+  gap: 60px;
+  animation: scrollBanner 25s linear infinite;
+}
+
+.announcement-track span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.announcement-link {
+  font-weight: 600;
+  text-decoration: underline;
+  margin-left: 6px;
+}
+
+.announcement-bar:hover .announcement-track {
+  animation-play-state: paused;
+}
+
+@keyframes scrollBanner {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
