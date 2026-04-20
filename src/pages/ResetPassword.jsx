@@ -102,6 +102,8 @@ export default function ResetPassword() {
   }
 
   console.log("🎉 Session ready, showing form");
+  console.log("🌐 Full URL:", window.location.href);
+  console.log("🔗 Hash:", window.location.hash);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
