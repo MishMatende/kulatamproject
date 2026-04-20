@@ -44,7 +44,8 @@ export default function Footer() {
               Order Online:
             </p>
 
-            <div className="flex justify-center">
+            <div className="flex justify-center gap-4 flex-wrap">
+              {/* Bolt Food */}
               <a
                 href="https://food.bolt.eu/en/320-nairobi/p/188508-kt-cafe-restaurant/?utm_source=google_integration&utm_medium=website&utm_campaign=footer_cta"
                 target="_blank"
@@ -56,14 +57,36 @@ export default function Footer() {
                   boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
                 }}
               >
-                <span className="bg-white rounded-md">
+                <span className="bg-white rounded-md p-1">
                   <img
                     src="/Bolt.svg"
                     alt="Bolt Food"
-                    className="w-7 h-7 object-contain"
+                    className="w-8 h-7 object-contain"
                   />
                 </span>
                 Order on Bolt
+              </a>
+
+              {/* Uber Eats */}
+              <a
+                href="https://www.ubereats.com/ke/store/kt-cafe/GNr0rPcgW4mIjM9-1wGqDQ?diningMode=PICKUP&mod=merchantUnavailable&modctx=%257B%2522storeUuid%2522%253A%252218daf4ac-f720-5b89-888c-cf7ed701aa0d%2522%257D&ps=1&sc=SEARCH_SUGGESTION" // replace with your actual restaurant link
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group inline-flex items-center gap-3 px-5 py-3 rounded-2xl font-semibold text-sm transition-all duration-300 active:scale-95"
+                style={{
+                  background: "#06c16a",
+                  color: "white",
+                  boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
+                }}
+              >
+                <span className="bg-white rounded-md p-1">
+                  <img
+                    src="/uber-eats.jpeg"
+                    alt="Uber Eats"
+                    className="w-12 h-7 object-contain"
+                  />
+                </span>
+                Order on Uber Eats
               </a>
             </div>
           </div>
@@ -91,7 +114,10 @@ export default function Footer() {
 
         {/* Bottom */}
         <div className="border-t pt-4 text-center text-sm text-gray-500 font-semibold">
-          © {new Date().getFullYear()} KT Cafe. All rights reserved.
+          <span style={{ color: "var(--brand-primary)" }}>
+            © {new Date().getFullYear()} KT Cafe.
+          </span>{" "}
+          All rights reserved.
         </div>
       </div>
     </footer>
