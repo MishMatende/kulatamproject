@@ -11,60 +11,72 @@ export default function ResetPassword() {
 
   const navigate = useNavigate();
 
-  // 🔑 Handle Supabase recovery session from URL
+  // 🔑 Handle Supabase recovery session
   useEffect(() => {
-    async function handleSession() {
-      const hash = window.location.hash;
+    console.log("🔍 ResetPassword mounted");
 
-      if (!hash) {
-        navigate("/admin/login");
-        return;
-      }
+    // 1. Listen for auth state changes
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log("📡 Auth event:", event);
+        console.log("📦 Session from event:", session);
 
-      const params = new URLSearchParams(hash.substring(1));
+        if (event === "PASSWORD_RECOVERY") {
+          console.log("✅ PASSWORD_RECOVERY detected");
+          setSessionReady(true);
+        }
+      },
+    );
 
-      const access_token = params.get("access_token");
-      const type = params.get("type");
-
-      // ❌ Invalid reset link
-      if (!access_token || type !== "recovery") {
-        navigate("/admin/login");
-        return;
-      }
-
-      // ✅ Let Supabase detect & set session automatically
+    // 2. Check if session already exists
+    const checkSession = async () => {
       const { data, error } = await supabase.auth.getSession();
 
-      if (error || !data.session) {
-        toast.error("Invalid or expired reset link");
-        navigate("/admin/login");
-        return;
+      console.log("🔎 Checking existing session...");
+      console.log("📦 Existing session:", data?.session);
+      console.log("❌ Session error:", error);
+
+      if (data?.session) {
+        console.log("✅ Session already exists");
+        setSessionReady(true);
       }
+    };
 
-      setSessionReady(true);
-    }
+    checkSession();
 
-    handleSession();
-  }, [navigate]);
+    return () => {
+      console.log("🧹 Cleaning up auth listener");
+      listener.subscription.unsubscribe();
+    };
+  }, []);
 
   async function handleReset(e) {
     e.preventDefault();
 
+    console.log("🚀 Reset button clicked");
+
     if (!password || password.length < 6) {
+      console.log("❌ Password too short");
       toast.error("Password must be at least 6 characters");
       return;
     }
 
     if (password !== confirm) {
+      console.log("❌ Passwords do not match");
       toast.error("Passwords do not match");
       return;
     }
 
     setLoading(true);
 
-    const { error } = await supabase.auth.updateUser({
+    console.log("📤 Sending updateUser request...");
+
+    const { data, error } = await supabase.auth.updateUser({
       password,
     });
+
+    console.log("📥 updateUser response:", data);
+    console.log("❌ updateUser error:", error);
 
     setLoading(false);
 
@@ -73,18 +85,23 @@ export default function ResetPassword() {
       return;
     }
 
+    console.log("✅ Password updated successfully");
+
     toast.success("Password updated successfully!");
-    navigate("/admin/login");
+    navigate("/login");
   }
 
-  // ⏳ Prevent UI flash before validation
+  // ⏳ Wait until session is ready
   if (!sessionReady) {
+    console.log("⏳ Waiting for session...");
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="text-sm text-gray-500">Validating reset link...</p>
+        <p className="text-sm text-gray-500">Preparing reset session...</p>
       </div>
     );
   }
+
+  console.log("🎉 Session ready, showing form");
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -101,7 +118,10 @@ export default function ResetPassword() {
             placeholder="New Password"
             className="w-full rounded-xl bg-gray-100 px-4 py-3 focus:outline-none"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              console.log("✏️ Password input:", e.target.value);
+              setPassword(e.target.value);
+            }}
           />
 
           <input
@@ -109,7 +129,10 @@ export default function ResetPassword() {
             placeholder="Confirm Password"
             className="w-full rounded-xl bg-gray-100 px-4 py-3 focus:outline-none"
             value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
+            onChange={(e) => {
+              console.log("✏️ Confirm input:", e.target.value);
+              setConfirm(e.target.value);
+            }}
           />
 
           <button
