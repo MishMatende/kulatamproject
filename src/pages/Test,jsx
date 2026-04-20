@@ -1,225 +1,129 @@
-import { useEffect, useState, useMemo } from "react";
-import { analyticsSupabase } from "../../lib/analyticsSupabase";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts";
+import { useState, useEffect } from "react";
+import { supabase } from "../lib/supabase";
+import toast from "react-hot-toast";
+import { useNavigate } from "react-router-dom";
 
-const QR_ID = "13803aa5-84ee-4161-978e-871e5b4f8788";
+export default function ResetPassword() {
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
 
-export default function QrAnalytics() {
-  const [scans, setScans] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    fetchScans();
+    async function handleSession() {
+      const hash = window.location.hash;
 
-    // 🔴 REALTIME SUBSCRIPTION
-    const channel = analyticsSupabase
-      .channel("qr_scans_changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "qr_scans",
-          filter: `qr_code_id=eq.${QR_ID}`,
-        },
-        (payload) => {
-          setScans((prev) => [payload.new, ...prev]);
-        },
-      )
-      .subscribe();
+      // ❌ No hash → block access
+      if (!hash) {
+        navigate("/admin/login");
+        return;
+      }
 
-    return () => {
-      analyticsSupabase.removeChannel(channel);
-    };
-  }, []);
+      const params = new URLSearchParams(hash.substring(1));
 
-  async function fetchScans() {
+      const access_token = params.get("access_token");
+      const refresh_token = params.get("refresh_token");
+      const type = params.get("type");
+
+      // ❌ Missing required params OR not recovery flow
+      if (!access_token || !refresh_token || type !== "recovery") {
+        navigate("/admin/login");
+        return;
+      }
+
+      // ✅ Set session
+      const { error } = await supabase.auth.setSession({
+        access_token,
+        refresh_token,
+      });
+
+      if (error) {
+        toast.error("Invalid or expired reset link");
+        navigate("/admin/login");
+        return;
+      }
+
+      setSessionReady(true);
+    }
+
+    handleSession();
+  }, [navigate]);
+
+  async function handleReset(e) {
+    e.preventDefault();
+
+    if (!password || password.length < 6) {
+      toast.error("Password must be at least 6 characters");
+      return;
+    }
+
+    if (password !== confirm) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
     setLoading(true);
 
-    const { data, error } = await analyticsSupabase
-      .from("qr_scans")
-      .select("*")
-      .eq("qr_code_id", QR_ID)
-      .order("scanned_at", { ascending: false });
-
-    if (!error) setScans(data || []);
-    else console.error(error);
+    const { error } = await supabase.auth.updateUser({
+      password,
+    });
 
     setLoading(false);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    toast.success("Password updated successfully!");
+    navigate("/admin/login");
   }
 
-  /* ===========================
-     📊 METRICS CALCULATIONS
-  ============================*/
-
-  const totalScans = scans.length;
-
-  const todayScans = scans.filter(
-    (s) => new Date(s.scanned_at).toDateString() === new Date().toDateString(),
-  ).length;
-
-  const uniqueVisitors = new Set(scans.map((s) => s.scan_fingerprint)).size;
-
-  /* ===========================
-     📈 SCANS PER DAY (7 DAYS)
-  ============================*/
-
-  const scansPerDay = useMemo(() => {
-    const days = {};
-    const last7 = [...Array(7)].map((_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      return d.toDateString();
-    });
-
-    last7.forEach((d) => (days[d] = 0));
-
-    scans.forEach((scan) => {
-      const day = new Date(scan.scanned_at).toDateString();
-      if (days[day] !== undefined) days[day]++;
-    });
-
-    return Object.entries(days)
-      .map(([date, count]) => ({
-        date: date.slice(0, 10),
-        scans: count,
-      }))
-      .reverse();
-  }, [scans]);
-
-  /* ===========================
-     🕒 PEAK HOURS
-  ============================*/
-
-  const peakHours = useMemo(() => {
-    const hours = {};
-
-    scans.forEach((scan) => {
-      const hour = new Date(scan.scanned_at).getHours();
-      hours[hour] = (hours[hour] || 0) + 1;
-    });
-
-    return Object.entries(hours)
-      .map(([hour, count]) => ({
-        hour: `${hour}:00`,
-        scans: count,
-      }))
-      .sort((a, b) => b.scans - a.scans)
-      .slice(0, 5);
-  }, [scans]);
-
-  /* ===========================
-     📊 BREAKDOWNS
-  ============================*/
-
-  const breakdown = (field) => {
-    const map = {};
-    scans.forEach((s) => {
-      const value = s[field] || "Unknown";
-      map[value] = (map[value] || 0) + 1;
-    });
-
-    return Object.entries(map).map(([name, value]) => ({
-      name,
-      value,
-    }));
-  };
-
-  const deviceData = breakdown("device_type");
-  const browserData = breakdown("browser");
-  const osData = breakdown("os");
-
-  if (loading) return <p>Loading analytics...</p>;
-
-  return (
-    <div className="space-y-8">
-      <h1 className="text-xl font-semibold">QR Code Analytics</h1>
-
-      {/* SUMMARY CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Stat title="Total Scans" value={totalScans} />
-        <Stat title="Today" value={todayScans} />
-        <Stat title="Unique Visitors" value={uniqueVisitors} />
+  // ⏳ Prevent UI flash before validation
+  if (!sessionReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-sm text-gray-500">Validating reset link...</p>
       </div>
+    );
+  }
 
-      {/* SCANS PER DAY */}
-      <Card title="Scans (Last 7 Days)">
-        <ResponsiveContainer width="100%" height={250}>
-          <LineChart data={scansPerDay}>
-            <XAxis dataKey="date" />
-            <YAxis />
-            <Tooltip />
-            <Line type="monotone" dataKey="scans" />
-          </LineChart>
-        </ResponsiveContainer>
-      </Card>
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border p-6 space-y-5">
+        <h1 className="text-2xl font-bold text-center">Reset Password</h1>
 
-      {/* PEAK HOURS */}
-      <Card title="Peak Hours">
-        {peakHours.map((h) => (
-          <div key={h.hour} className="flex justify-between py-1">
-            <span>{h.hour}</span>
-            <span>{h.scans}</span>
-          </div>
-        ))}
-      </Card>
+        <p className="text-sm text-gray-500 text-center">
+          Enter a new password to regain access.
+        </p>
 
-      {/* BREAKDOWN PIE CHARTS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <PieCard title="Devices" data={deviceData} />
-        <PieCard title="Browsers" data={browserData} />
-        <PieCard title="Operating Systems" data={osData} />
+        <form onSubmit={handleReset} className="space-y-3">
+          <input
+            type="password"
+            placeholder="New Password"
+            className="w-full rounded-xl bg-gray-100 px-4 py-3 focus:outline-none"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+
+          <input
+            type="password"
+            placeholder="Confirm Password"
+            className="w-full rounded-xl bg-gray-100 px-4 py-3 focus:outline-none"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+          />
+
+          <button
+            disabled={loading}
+            className="w-full rounded-xl bg-black text-white py-3 font-semibold disabled:opacity-50"
+          >
+            {loading ? "Updating..." : "Reset Password"}
+          </button>
+        </form>
       </div>
-    </div>
-  );
-}
-
-/* ===========================
-   UI COMPONENTS
-===========================*/
-
-function Stat({ title, value }) {
-  return (
-    <div className="bg-white p-5 rounded-2xl shadow border">
-      <p className="text-gray-500 text-sm">{title}</p>
-      <h2 className="text-2xl font-bold">{value}</h2>
-    </div>
-  );
-}
-
-function Card({ title, children }) {
-  return (
-    <div className="bg-white p-5 rounded-2xl shadow border">
-      <h2 className="font-semibold mb-4">{title}</h2>
-      {children}
-    </div>
-  );
-}
-
-function PieCard({ title, data }) {
-  return (
-    <div className="bg-white p-5 rounded-2xl shadow border">
-      <h2 className="font-semibold mb-4">{title}</h2>
-      <ResponsiveContainer width="100%" height={250}>
-        <PieChart>
-          <Pie data={data} dataKey="value" nameKey="name" outerRadius={90}>
-            {data.map((_, index) => (
-              <Cell key={index} />
-            ))}
-          </Pie>
-          <Tooltip />
-        </PieChart>
-      </ResponsiveContainer>
     </div>
   );
 }

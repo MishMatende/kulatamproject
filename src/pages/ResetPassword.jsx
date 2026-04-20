@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
@@ -7,8 +7,50 @@ export default function ResetPassword() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
 
   const navigate = useNavigate();
+
+  // 🔑 Handle Supabase recovery session from URL
+  useEffect(() => {
+    async function handleSession() {
+      const hash = window.location.hash;
+
+      // ❌ No hash → block access
+      if (!hash) {
+        navigate("/admin/login");
+        return;
+      }
+
+      const params = new URLSearchParams(hash.substring(1));
+
+      const access_token = params.get("access_token");
+      const refresh_token = params.get("refresh_token");
+      const type = params.get("type");
+
+      // ❌ Missing required params OR not recovery flow
+      if (!access_token || !refresh_token || type !== "recovery") {
+        navigate("/admin/login");
+        return;
+      }
+
+      // ✅ Set session
+      const { error } = await supabase.auth.setSession({
+        access_token,
+        refresh_token,
+      });
+
+      if (error) {
+        toast.error("Invalid or expired reset link");
+        navigate("/admin/login");
+        return;
+      }
+
+      setSessionReady(true);
+    }
+
+    handleSession();
+  }, [navigate]);
 
   async function handleReset(e) {
     e.preventDefault();
@@ -37,7 +79,16 @@ export default function ResetPassword() {
     }
 
     toast.success("Password updated successfully!");
-    navigate("/login");
+    navigate("/admin/login");
+  }
+
+  // ⏳ Prevent UI flash before validation
+  if (!sessionReady) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-sm text-gray-500">Validating reset link...</p>
+      </div>
+    );
   }
 
   return (

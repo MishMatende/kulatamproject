@@ -2,7 +2,7 @@ export default function Footer() {
   const googleReviewLink = "https://g.page/r/CXdP1Et3gXTPEBM/review"; // replace
 
   return (
-    <footer className="relative w-full mt-5 bg-gradient-to-br from-white via-gray-50 to-white border-t">
+    <footer className="relative w-full mt-5 bg-linear-to-br from-white via-gray-50 to-white border-t">
       <div className="max-w-6xl mx-auto px-6 pb-8 pt-4 space-y-8">
         {/* ⭐ Review Link */}
         <div
