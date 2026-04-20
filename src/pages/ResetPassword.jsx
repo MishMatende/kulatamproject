@@ -16,7 +16,6 @@ export default function ResetPassword() {
     async function handleSession() {
       const hash = window.location.hash;
 
-      // ❌ No hash → block access
       if (!hash) {
         navigate("/admin/login");
         return;
@@ -25,22 +24,18 @@ export default function ResetPassword() {
       const params = new URLSearchParams(hash.substring(1));
 
       const access_token = params.get("access_token");
-      const refresh_token = params.get("refresh_token");
       const type = params.get("type");
 
-      // ❌ Missing required params OR not recovery flow
-      if (!access_token || !refresh_token || type !== "recovery") {
+      // ❌ Invalid reset link
+      if (!access_token || type !== "recovery") {
         navigate("/admin/login");
         return;
       }
 
-      // ✅ Set session
-      const { error } = await supabase.auth.setSession({
-        access_token,
-        refresh_token,
-      });
+      // ✅ Let Supabase detect & set session automatically
+      const { data, error } = await supabase.auth.getSession();
 
-      if (error) {
+      if (error || !data.session) {
         toast.error("Invalid or expired reset link");
         navigate("/admin/login");
         return;
