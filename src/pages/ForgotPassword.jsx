@@ -20,14 +20,9 @@ export default function ForgotPassword() {
 
     setLoading(true);
 
-    console.log("📨 Sending reset email to:", email);
-
     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: "https://ktcafe.restaurant/reset-password", // 🔥 IMPORTANT
     });
-
-    console.log("📥 Response:", data);
-    console.log("❌ Error:", error);
 
     setLoading(false);
 
@@ -69,7 +64,6 @@ export default function ForgotPassword() {
             placeholder="admin@kulatam.co.ke"
             value={email}
             onChange={(e) => {
-              console.log("✏️ Email input:", e.target.value);
               setEmail(e.target.value);
             }}
             required

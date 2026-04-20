@@ -42,10 +42,11 @@ export default function AdminLogin() {
         className="w-full max-w-sm bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-5"
       >
         {/* Logo + Brand */}
-        <div className="flex flex-col items-center space-y-2">
-          <img src="/kulatam-logo.svg" alt="Kulatam" className="h-14 w-14" />
-          <h1 className="text-2xl font-semibold tracking-tight">Kulatam</h1>
-          <p className="text-sm text-gray-500">Admin Dashboard</p>
+        <div className="flex flex-col items-center space-y-2 mb-5">
+          <img src="/kulatam-logo.svg" alt="Kulatam" className="h-20 w-20" />
+          <p className="text-sm text-black-500 font-bold mt-5">
+            Admin Dashboard
+          </p>
         </div>
 
         {/* Email */}

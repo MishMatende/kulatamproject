@@ -2,10 +2,14 @@ import { useState, useEffect } from "react";
 import { supabase } from "../lib/supabase";
 import toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
+import { Eye, EyeOff, Check } from "lucide-react";
+import { motion } from "framer-motion";
 
 export default function ResetPassword() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
 
@@ -13,70 +17,49 @@ export default function ResetPassword() {
 
   // 🔑 Handle Supabase recovery session
   useEffect(() => {
-    console.log("🔍 ResetPassword mounted");
-
-    // 1. Listen for auth state changes
     const { data: listener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log("📡 Auth event:", event);
-        console.log("📦 Session from event:", session);
-
+      async (event) => {
         if (event === "PASSWORD_RECOVERY") {
-          console.log("✅ PASSWORD_RECOVERY detected");
           setSessionReady(true);
         }
       },
     );
 
-    // 2. Check if session already exists
     const checkSession = async () => {
-      const { data, error } = await supabase.auth.getSession();
-
-      console.log("🔎 Checking existing session...");
-      console.log("📦 Existing session:", data?.session);
-      console.log("❌ Session error:", error);
-
-      if (data?.session) {
-        console.log("✅ Session already exists");
-        setSessionReady(true);
-      }
+      const { data } = await supabase.auth.getSession();
+      if (data?.session) setSessionReady(true);
     };
 
     checkSession();
 
-    return () => {
-      console.log("🧹 Cleaning up auth listener");
-      listener.subscription.unsubscribe();
-    };
+    return () => listener.subscription.unsubscribe();
   }, []);
+
+  // 🔐 Password rules
+  const rules = {
+    length: password.length >= 8,
+    upper: /[A-Z]/.test(password),
+    lower: /[a-z]/.test(password),
+    number: /[0-9]/.test(password),
+  };
+
+  const strength = Object.values(rules).filter(Boolean).length;
+
+  const allValid = strength === 4 && password === confirm;
 
   async function handleReset(e) {
     e.preventDefault();
 
-    console.log("🚀 Reset button clicked");
-
-    if (!password || password.length < 6) {
-      console.log("❌ Password too short");
-      toast.error("Password must be at least 6 characters");
-      return;
-    }
-
-    if (password !== confirm) {
-      console.log("❌ Passwords do not match");
-      toast.error("Passwords do not match");
+    if (!allValid) {
+      toast.error("Please meet all password requirements");
       return;
     }
 
     setLoading(true);
 
-    console.log("📤 Sending updateUser request...");
-
-    const { data, error } = await supabase.auth.updateUser({
+    const { error } = await supabase.auth.updateUser({
       password,
     });
-
-    console.log("📥 updateUser response:", data);
-    console.log("❌ updateUser error:", error);
 
     setLoading(false);
 
@@ -85,15 +68,11 @@ export default function ResetPassword() {
       return;
     }
 
-    console.log("✅ Password updated successfully");
-
     toast.success("Password updated successfully!");
-    navigate("/login");
+    navigate("/admin/login");
   }
 
-  // ⏳ Wait until session is ready
   if (!sessionReady) {
-    console.log("⏳ Waiting for session...");
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-sm text-gray-500">Preparing reset session...</p>
@@ -101,50 +80,125 @@ export default function ResetPassword() {
     );
   }
 
-  console.log("🎉 Session ready, showing form");
-  console.log("🌐 Full URL:", window.location.href);
-  console.log("🔗 Hash:", window.location.hash);
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-sm border p-6 space-y-5">
-        <h1 className="text-2xl font-bold text-center">Reset Password</h1>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.96, y: 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="w-full max-w-md bg-white rounded-2xl shadow-lg border border-gray-100 p-6 space-y-6"
+      >
+        {/* Logo */}
+        <div className="flex flex-col items-center space-y-2">
+          <img src="/kulatam-logo.svg" alt="Kulatam" className="h-20 w-20" />
+          <h1 className="text-2xl font-semibold">Reset Password</h1>
+          <p className="text-sm text-gray-500 text-center">
+            Choose a strong password to secure your account
+          </p>
+        </div>
 
-        <p className="text-sm text-gray-500 text-center">
-          Enter a new password to regain access.
-        </p>
+        <form onSubmit={handleReset} className="space-y-5">
+          {/* Password */}
+          <div className="space-y-2">
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                placeholder="New Password"
+                className="w-full rounded-lg border border-gray-300 px-4 py-2.5 pr-12 text-sm
+                           focus:outline-none focus:ring-2 focus:ring-black focus:border-black"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
 
-        <form onSubmit={handleReset} className="space-y-3">
-          <input
-            type="password"
-            placeholder="New Password"
-            className="w-full rounded-xl bg-gray-100 px-4 py-3 focus:outline-none"
-            value={password}
-            onChange={(e) => {
-              console.log("✏️ Password input:", e.target.value);
-              setPassword(e.target.value);
-            }}
-          />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
 
-          <input
-            type="password"
-            placeholder="Confirm Password"
-            className="w-full rounded-xl bg-gray-100 px-4 py-3 focus:outline-none"
-            value={confirm}
-            onChange={(e) => {
-              console.log("✏️ Confirm input:", e.target.value);
-              setConfirm(e.target.value);
-            }}
-          />
+            {/* Strength bar */}
+            <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className={`h-full transition-all ${
+                  strength === 1
+                    ? "w-1/4 bg-red-400"
+                    : strength === 2
+                      ? "w-2/4 bg-yellow-400"
+                      : strength === 3
+                        ? "w-3/4 bg-blue-400"
+                        : strength === 4
+                          ? "w-full bg-green-500"
+                          : "w-0"
+                }`}
+              />
+            </div>
+          </div>
 
+          {/* Confirm */}
+          <div className="relative">
+            <input
+              type={showConfirm ? "text" : "password"}
+              placeholder="Confirm Password"
+              className="w-full rounded-lg border border-gray-300 px-4 py-2.5 pr-12 text-sm
+                         focus:outline-none focus:ring-2 focus:ring-black focus:border-black"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+            />
+
+            <button
+              type="button"
+              onClick={() => setShowConfirm(!showConfirm)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+            >
+              {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+
+          {/* Rules */}
+          <div className="text-xs space-y-2 bg-gray-50 p-3 rounded-lg border">
+            {[
+              { label: "At least 8 characters", valid: rules.length },
+              { label: "One uppercase letter", valid: rules.upper },
+              { label: "One lowercase letter", valid: rules.lower },
+              { label: "One number", valid: rules.number },
+              { label: "Passwords match", valid: password === confirm },
+            ].map((rule, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <Check
+                  size={14}
+                  className={rule.valid ? "text-green-600" : "text-gray-300"}
+                />
+                <span
+                  className={rule.valid ? "text-green-600" : "text-gray-400"}
+                >
+                  {rule.label}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Button */}
           <button
-            disabled={loading}
-            className="w-full rounded-xl bg-black text-white py-3 font-semibold disabled:opacity-50"
+            disabled={loading || !allValid}
+            className="w-full rounded-lg bg-black text-white py-2.5 text-sm font-semibold
+                       hover:bg-gray-900 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? "Updating..." : "Reset Password"}
           </button>
+
+          {/* Back */}
+          <button
+            type="button"
+            onClick={() => navigate("/admin/login")}
+            className="w-full text-sm text-gray-500 hover:text-black transition"
+          >
+            Back to login
+          </button>
         </form>
-      </div>
+      </motion.div>
     </div>
   );
 }
