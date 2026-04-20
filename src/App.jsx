@@ -15,6 +15,7 @@ import AdminLayout from "./layouts/AdminLayout";
 import ResetPassword from "./pages/ResetPassword";
 import AdminPoster from "./pages/AdminPoster";
 import QrAnalytics from "./pages/QrAnalytics";
+import ForgotPassword from "./pages/ForgotPassword";
 
 export default function App() {
   const [loading, setLoading] = useState(true);
@@ -44,6 +45,7 @@ export default function App() {
         />
       </Route>
       <Route path="/admin/login" element={<AdminLogin />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route element={<AdminLayout />}>
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
