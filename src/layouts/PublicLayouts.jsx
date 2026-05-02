@@ -7,7 +7,7 @@ import PosterModal from "../components/PosterModal";
 export default function PublicLayout() {
   return (
     <div className="min-h-screen w-full flex justify-center">
-      <div className="w-full max-w-6xl flex flex-col">
+      <div className="w-full max-w-6xl flex flex-col min-h-screen">
         <Header />
         <ScrollToTop />
 

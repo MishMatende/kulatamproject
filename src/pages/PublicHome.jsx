@@ -103,7 +103,7 @@ export default function PublicHome() {
   const googleReviewLink = "https://g.page/r/CXdP1Et3gXTPEBM/review";
 
   return (
-    <div>
+    <div className="min-h-[85vh]">
       {/* ================= REVIEW BANNER ================= */}
       <AnnouncementBanner googleReviewLink={googleReviewLink} />
 
