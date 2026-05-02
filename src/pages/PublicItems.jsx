@@ -238,7 +238,7 @@ export default function PublicItems() {
   const currentSideDishes = SIDE_DISHES[activeTab || subcategoryId] || null;
 
   return (
-    <div className="p-4 md:p-6 max-w-3xl mx-auto">
+    <div className="p-4 md:p-6 max-w-3xl mx-auto min-h-[85vh]">
       <BackButton />
 
       {/* Heading */}
@@ -281,7 +281,7 @@ export default function PublicItems() {
               }}
               className={`px-4 py-1 rounded-full text-sm font-medium transition ${
                 activeTab === child.id
-                  ? "bg-[var(--brand-primary)] text-white"
+                  ? "bg-(--brand-primary) text-white"
                   : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
             >

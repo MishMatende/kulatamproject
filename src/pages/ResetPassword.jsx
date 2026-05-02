@@ -113,7 +113,7 @@ export default function ResetPassword() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 cursor-pointer"
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -184,7 +184,7 @@ export default function ResetPassword() {
           <button
             disabled={loading || !allValid}
             className="w-full rounded-lg bg-black text-white py-2.5 text-sm font-semibold
-                       hover:bg-gray-900 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                       hover:bg-gray-900 transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
           >
             {loading ? "Updating..." : "Reset Password"}
           </button>
@@ -193,7 +193,7 @@ export default function ResetPassword() {
           <button
             type="button"
             onClick={() => navigate("/admin/login")}
-            className="w-full text-sm text-gray-500 hover:text-black transition"
+            className="w-full text-sm text-gray-500 hover:text-black transition cursor-pointer"
           >
             Back to login
           </button>

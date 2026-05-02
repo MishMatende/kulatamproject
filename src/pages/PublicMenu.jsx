@@ -100,7 +100,7 @@ export default function PublicMenu() {
 
   /* ---------------- UI ---------------- */
   return (
-    <div className="p-6 max-w-3xl mx-auto">
+    <div className="p-6 max-w-3xl mx-auto min-h-[85vh]">
       <h1
         className="text-3xl font-bold mb-6"
         style={{ color: "var(--brand-primary)" }}
