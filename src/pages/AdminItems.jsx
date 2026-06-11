@@ -31,7 +31,7 @@ export default function AdminItems() {
   const [price, setPrice] = useState("");
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
-
+  const [isSaving, setIsSaving] = useState(false);
   const [showVariants, setShowVariants] = useState(false);
   const [variantRows, setVariantRows] = useState([{ name: "", price: "" }]);
 
@@ -219,88 +219,97 @@ export default function AdminItems() {
 
   async function handleSave(e) {
     e.preventDefault();
-    haptic("medium");
 
-    if (!name || !categoryId || !subcategoryId) {
-      toast.error("Name, category & subcategory required");
-      return;
-    }
+    if (isSaving) return;
 
-    if (!showVariants && !price) {
-      toast.error("Price required");
-      return;
-    }
+    setIsSaving(true);
 
-    if (showVariants && variantRows.some((v) => !v.name || !v.price)) {
-      toast.error("All variants must have name & price");
-      return;
-    }
+    try {
+      haptic("medium");
 
-    let imageUrl = editingItem?.image_url || null;
-
-    /* ---------- IMAGE UPLOAD ---------- */
-    if (file) {
-      try {
-        const path = `${Date.now()}-${file.name}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("menu-images")
-          .upload(path, file);
-
-        if (uploadError) {
-          toast.error("Image upload failed");
-          return;
-        }
-
-        const {
-          data: { publicUrl },
-        } = supabase.storage.from("menu-images").getPublicUrl(path);
-
-        imageUrl = publicUrl;
-      } catch {
-        toast.error("Image upload crashed");
+      if (!name || !categoryId || !subcategoryId) {
+        toast.error("Name, category & subcategory required");
         return;
       }
+
+      if (!showVariants && !price) {
+        toast.error("Price required");
+        return;
+      }
+
+      if (showVariants && variantRows.some((v) => !v.name || !v.price)) {
+        toast.error("All variants must have name & price");
+        return;
+      }
+
+      let imageUrl = editingItem?.image_url || null;
+
+      /* ---------- IMAGE UPLOAD ---------- */
+      if (file) {
+        try {
+          const path = `${Date.now()}-${file.name}`;
+
+          const { error: uploadError } = await supabase.storage
+            .from("menu-images")
+            .upload(path, file);
+
+          if (uploadError) {
+            toast.error("Image upload failed");
+            return;
+          }
+
+          const {
+            data: { publicUrl },
+          } = supabase.storage.from("menu-images").getPublicUrl(path);
+
+          imageUrl = publicUrl;
+        } catch {
+          toast.error("Image upload crashed");
+          return;
+        }
+      }
+
+      /* ---------- PAYLOAD ---------- */
+      let variantsObject = null;
+      let finalPrice = null;
+
+      if (showVariants) {
+        variantsObject = {};
+        variantRows.forEach((v) => {
+          variantsObject[v.name] = Number(v.price);
+        });
+      } else {
+        finalPrice = Number(price);
+      }
+
+      const payload = {
+        name,
+        description: desc,
+        price: finalPrice,
+        variants: variantsObject,
+        category_id: categoryId,
+        subcategory_id: subcategoryId,
+        image_url: imageUrl,
+      };
+
+      /* ---------- UPDATE ---------- */
+      if (editingItem) {
+        await supabase
+          .from("menu_items")
+          .update(payload)
+          .eq("id", editingItem.id);
+        toast.success("Item updated");
+      } else {
+        await supabase.from("menu_items").insert(payload);
+        toast.success("Item added");
+      }
+
+      setOpen(false);
+      localStorage.removeItem(CACHE_KEY);
+      await load(true);
+    } finally {
+      setIsSaving(false);
     }
-
-    /* ---------- PAYLOAD ---------- */
-    let variantsObject = null;
-    let finalPrice = null;
-
-    if (showVariants) {
-      variantsObject = {};
-      variantRows.forEach((v) => {
-        variantsObject[v.name] = Number(v.price);
-      });
-    } else {
-      finalPrice = Number(price);
-    }
-
-    const payload = {
-      name,
-      description: desc,
-      price: finalPrice,
-      variants: variantsObject,
-      category_id: categoryId,
-      subcategory_id: subcategoryId,
-      image_url: imageUrl,
-    };
-
-    /* ---------- UPDATE ---------- */
-    if (editingItem) {
-      await supabase
-        .from("menu_items")
-        .update(payload)
-        .eq("id", editingItem.id);
-      toast.success("Item updated");
-    } else {
-      await supabase.from("menu_items").insert(payload);
-      toast.success("Item added");
-    }
-
-    setOpen(false);
-    localStorage.removeItem(CACHE_KEY);
-    load(true);
   }
 
   /* ---------------- DELETE ---------------- */
@@ -385,9 +394,9 @@ export default function AdminItems() {
               haptic("light");
               setActiveCategoryFilter("all");
             }}
-            className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition ${
+            className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition ${
               activeCategoryFilter === "all"
-                ? "bg-[var(--brand-primary)] text-white shadow-md"
+                ? "bg-(--brand-primary) text-white shadow-md"
                 : "bg-gray-100 text-gray-600"
             }`}
           >
@@ -401,9 +410,9 @@ export default function AdminItems() {
                 haptic("light");
                 setActiveCategoryFilter(cat.id);
               }}
-              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-medium transition ${
+              className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition ${
                 activeCategoryFilter === cat.id
-                  ? "bg-[var(--brand-primary)] text-white shadow-md"
+                  ? "bg-(--brand-primary) text-white shadow-md"
                   : "bg-gray-100 text-gray-600"
               }`}
             >
@@ -413,7 +422,7 @@ export default function AdminItems() {
         </div>
 
         {/* Subtle bottom fade for scroll hint */}
-        <div className="pointer-events-none absolute right-0 top-0 h-full w-6 bg-gradient-to-l from-white to-transparent" />
+        <div className="pointer-events-none absolute right-0 top-0 h-full w-6 bg-linear-to-l from-white to-transparent" />
       </div>
 
       <input
@@ -793,13 +802,23 @@ export default function AdminItems() {
               })}
 
               <button
-                className="w-full border rounded-xl py-2"
+                type="submit"
+                disabled={isSaving}
+                className="w-full border rounded-xl py-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 style={{
                   borderColor: "var(--brand-primary)",
                   color: "var(--brand-primary)",
                 }}
               >
-                Save
+                {isSaving && (
+                  <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                )}
+
+                {isSaving
+                  ? editingItem
+                    ? "Updating..."
+                    : "Saving..."
+                  : "Save"}
               </button>
             </motion.form>
           </motion.div>
