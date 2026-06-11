@@ -328,49 +328,49 @@ export default function AdminItems() {
       }
 
       /* ---------- PAYLOAD ---------- */
-    /* ---------- PAYLOAD ---------- */
-    let payload;
+      /* ---------- PAYLOAD ---------- */
+      let payload;
 
-    if (isBuildYourOwn) {
-      payload = {
-        name,
-        price: Number(price),
-        image_url: imageUrl,
-      };
-    } else {
-      let variantsObject = null;
-      let finalPrice = null;
-
-      if (showVariants) {
-        variantsObject = {};
-        variantRows.forEach((v) => {
-          variantsObject[v.name] = Number(v.price);
-        });
+      if (isBuildYourOwn) {
+        payload = {
+          name,
+          price: Number(price),
+          image_url: imageUrl,
+        };
       } else {
-        finalPrice = Number(price);
-      }
+        let variantsObject = null;
+        let finalPrice = null;
 
-      const payload = {
-        name,
-        description: desc,
-        price: finalPrice,
-        variants: variantsObject,
-        category_id: categoryId,
-        subcategory_id: subcategoryId,
-        image_url: imageUrl,
-      };
-    }
+        if (showVariants) {
+          variantsObject = {};
+          variantRows.forEach((v) => {
+            variantsObject[v.name] = Number(v.price);
+          });
+        } else {
+          finalPrice = Number(price);
+        }
+
+        payload = {
+          name,
+          description: desc,
+          price: finalPrice,
+          variants: variantsObject,
+          category_id: categoryId,
+          subcategory_id: subcategoryId,
+          image_url: imageUrl,
+        };
+      }
 
       /* ---------- UPDATE ---------- */
       const table = isBuildYourOwn ? "breakfast_items" : "menu_items";
 
-    if (editingItem) {
-      await supabase.from(table).update(payload).eq("id", editingItem.id);
-      toast.success("Item updated");
-    } else {
-      await supabase.from(table).insert(payload);
-      toast.success("Item added");
-    }
+      if (editingItem) {
+        await supabase.from(table).update(payload).eq("id", editingItem.id);
+        toast.success("Item updated");
+      } else {
+        await supabase.from(table).insert(payload);
+        toast.success("Item added");
+      }
 
       setOpen(false);
       localStorage.removeItem(CACHE_KEY);
@@ -378,6 +378,7 @@ export default function AdminItems() {
     } finally {
       setIsSaving(false);
     }
+  }
 
   /* ---------------- DELETE ---------------- */
 
