@@ -143,7 +143,7 @@ export default function PublicSubcategories() {
   if (loading) return <LoadingScreen />;
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-6 space-y-4 min-h-[85vh]">
       <BackButton />
 
       <h1
@@ -166,7 +166,13 @@ export default function PublicSubcategories() {
             <motion.div
               key={sub.id}
               variants={isMobile ? itemVariantsMobile : itemVariantsDesktop}
-              onClick={() => navigate(`/menu/${categoryId}/${sub.id}`)}
+              onClick={() => {
+                if (sub.name?.toLowerCase() === "build your own") {
+                  navigate("/build-your-own");
+                } else {
+                  navigate(`/menu/${categoryId}/${sub.id}`);
+                }
+              }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className="rounded-xl shadow relative cursor-pointer bg-cover bg-center bg-no-repeat"

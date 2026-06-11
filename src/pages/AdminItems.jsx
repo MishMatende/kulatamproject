@@ -52,6 +52,11 @@ export default function AdminItems() {
     if (type === "heavy") navigator.vibrate([20, 40, 20]);
   }
 
+  const isBuildYourOwn = useMemo(() => {
+    const sub = subcategories.find((s) => s.id === subcategoryId);
+    return sub?.name?.toLowerCase() === "build your own";
+  }, [subcategoryId, subcategories]);
+
   /* ---------------- LOAD ---------------- */
   async function load(force = false) {
     if (!force) {
@@ -68,33 +73,40 @@ export default function AdminItems() {
       }
     }
 
-    const { data: cats, error: catErr } = await supabase
-      .from("categories")
-      .select("id,name");
+    const { data: cats } = await supabase.from("categories").select("id,name");
 
-    const { data: subs, error: subErr } = await supabase
+    const { data: subs } = await supabase
       .from("subcategories")
-      .select("id,name,category_id,parent_id"); // 🔥 parent_id added
+      .select("id,name,category_id,parent_id");
 
-    const { data: menu, error: menuErr } = await supabase
-      .from("menu_items")
+    const { data: menu } = await supabase.from("menu_items").select("*");
+
+    const { data: breakfast } = await supabase
+      .from("breakfast_items")
       .select("*");
 
-    if (catErr || subErr || menuErr) {
-      console.error("🔴 Load error:", { catErr, subErr, menuErr });
-      return;
-    }
+    const taggedMenu = (menu || []).map((i) => ({
+      ...i,
+      type: "menu",
+    }));
+
+    const taggedBreakfast = (breakfast || []).map((i) => ({
+      ...i,
+      type: "breakfast",
+    }));
+
+    const combined = [...taggedMenu, ...taggedBreakfast];
 
     setCategories(cats || []);
     setSubcategories(subs || []);
-    setItems(menu || []);
+    setItems(combined);
 
     localStorage.setItem(
       CACHE_KEY,
       JSON.stringify({
         categories: cats || [],
         subcategories: subs || [],
-        items: menu || [],
+        items: combined,
         timestamp: Date.now(),
       }),
     );
@@ -137,14 +149,22 @@ export default function AdminItems() {
   const filteredItems = useMemo(() => {
     let filtered = items;
 
-    // 🔥 Category filter
-    if (activeCategoryFilter !== "all") {
-      filtered = filtered.filter(
-        (item) => item.category_id === activeCategoryFilter,
-      );
+    // ✅ Build Your Own filter
+    if (activeCategoryFilter === "build-your-own") {
+      filtered = filtered.filter((item) => item.type === "breakfast");
+    }
+    // ✅ Normal category filter
+    else if (activeCategoryFilter !== "all") {
+      filtered = filtered.filter((item) => {
+        if (item.type === "menu") {
+          return item.category_id === activeCategoryFilter;
+        }
+
+        return false; // hide breakfast items in normal categories
+      });
     }
 
-    // 🔥 Search filter
+    // ✅ Search
     if (search) {
       filtered = filtered.filter((i) =>
         i.name.toLowerCase().includes(search.toLowerCase()),
@@ -188,30 +208,68 @@ export default function AdminItems() {
   }
 
   function openEditModal(item) {
-    if (item.variants) {
-      setShowVariants(true);
-
-      const rows = Object.entries(item.variants).map(([key, value]) => ({
-        name: key,
-        price: value,
-      }));
-
-      setVariantRows(rows);
-      setPrice("");
-    } else {
-      setShowVariants(false);
-      setVariantRows([{ name: "", price: "" }]);
-    }
-
     setEditingItem(item);
-    setName(item.name);
+    setName(item.name || "");
     setDesc(item.description || "");
     setPrice(item.price ?? "");
-    setCategoryId(item.category_id);
-    setSubcategoryId(item.subcategory_id);
-    setSelectedChain(buildChain(item.subcategory_id)); // 🔥 rebuild hierarchy
     setPreview(item.image_url || null);
     setFile(null);
+
+    if (item.type === "breakfast") {
+      // 🔒 Safe lookup
+      const byoSub = subcategories.find(
+        (s) => s?.name?.toLowerCase?.() === "build your own",
+      );
+
+      if (!byoSub) {
+        console.warn("⚠️ Build Your Own subcategory not found");
+        toast.error("Build Your Own subcategory missing");
+        return;
+      }
+
+      // ✅ Set safely
+      setCategoryId(byoSub.category_id || "");
+      setSubcategoryId(byoSub.id || "");
+
+      try {
+        const chain = buildChain(byoSub.id);
+        setSelectedChain(chain || []);
+      } catch (err) {
+        console.warn("⚠️ buildChain failed:", err);
+        setSelectedChain([]);
+      }
+
+      setShowVariants(false);
+      setVariantRows([{ name: "", price: "" }]); // reset
+    } else {
+      if (item.variants) {
+        setShowVariants(true);
+
+        const rows = Object.entries(item.variants || {}).map(
+          ([key, value]) => ({
+            name: key,
+            price: value,
+          }),
+        );
+
+        setVariantRows(rows.length ? rows : [{ name: "", price: "" }]);
+        setPrice("");
+      } else {
+        setShowVariants(false);
+        setVariantRows([{ name: "", price: "" }]);
+      }
+
+      setCategoryId(item.category_id || "");
+      setSubcategoryId(item.subcategory_id || "");
+
+      try {
+        const chain = buildChain(item.subcategory_id);
+        setSelectedChain(chain || []);
+      } catch {
+        setSelectedChain([]);
+      }
+    }
+
     setOpen(true);
   }
 
@@ -270,6 +328,16 @@ export default function AdminItems() {
       }
 
       /* ---------- PAYLOAD ---------- */
+    /* ---------- PAYLOAD ---------- */
+    let payload;
+
+    if (isBuildYourOwn) {
+      payload = {
+        name,
+        price: Number(price),
+        image_url: imageUrl,
+      };
+    } else {
       let variantsObject = null;
       let finalPrice = null;
 
@@ -291,18 +359,18 @@ export default function AdminItems() {
         subcategory_id: subcategoryId,
         image_url: imageUrl,
       };
+    }
 
       /* ---------- UPDATE ---------- */
-      if (editingItem) {
-        await supabase
-          .from("menu_items")
-          .update(payload)
-          .eq("id", editingItem.id);
-        toast.success("Item updated");
-      } else {
-        await supabase.from("menu_items").insert(payload);
-        toast.success("Item added");
-      }
+      const table = isBuildYourOwn ? "breakfast_items" : "menu_items";
+
+    if (editingItem) {
+      await supabase.from(table).update(payload).eq("id", editingItem.id);
+      toast.success("Item updated");
+    } else {
+      await supabase.from(table).insert(payload);
+      toast.success("Item added");
+    }
 
       setOpen(false);
       localStorage.removeItem(CACHE_KEY);
@@ -310,7 +378,6 @@ export default function AdminItems() {
     } finally {
       setIsSaving(false);
     }
-  }
 
   /* ---------------- DELETE ---------------- */
 
@@ -319,7 +386,11 @@ export default function AdminItems() {
 
     haptic("heavy");
 
-    await supabase.from("menu_items").delete().eq("id", deleteItem.id);
+    const table =
+      deleteItem.type === "breakfast" ? "breakfast_items" : "menu_items";
+
+    await supabase.from(table).delete().eq("id", deleteItem.id);
+
     toast.success("Item deleted");
 
     setDeleteItem(null);
@@ -419,6 +490,19 @@ export default function AdminItems() {
               {cat.name}
             </button>
           ))}
+          <button
+            onClick={() => {
+              haptic("light");
+              setActiveCategoryFilter("build-your-own");
+            }}
+            className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition ${
+              activeCategoryFilter === "build-your-own"
+                ? "bg-(--brand-primary) text-white shadow-md"
+                : "bg-gray-100 text-gray-600"
+            }`}
+          >
+            Build Your Own
+          </button>
         </div>
 
         {/* Subtle bottom fade for scroll hint */}
@@ -460,7 +544,14 @@ export default function AdminItems() {
                   )}
                 </h3>
                 <p className="text-sm text-gray-500">{item.description}</p>
-                {item.variants ? (
+                {item.type === "breakfast" ? (
+                  <p
+                    className="text-sm font-bold"
+                    style={{ color: "var(--brand-primary)" }}
+                  >
+                    KES {item.price?.toLocaleString()}
+                  </p>
+                ) : item.variants ? (
                   <div className="text-sm space-y-1">
                     {Object.entries(item.variants).map(([key, value]) => (
                       <div

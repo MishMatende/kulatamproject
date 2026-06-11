@@ -15,6 +15,10 @@ import AdminLayout from "./layouts/AdminLayout";
 import ResetPassword from "./pages/ResetPassword";
 import AdminPoster from "./pages/AdminPoster";
 import QrAnalytics from "./pages/QrAnalytics";
+import ForgotPassword from "./pages/ForgotPassword";
+import BuildYourOwn from "./pages/BuildYourOwn";
+import YourBreakfast from "./pages/YourBreakfast";
+import NotFound from "./pages/NotFound";
 
 export default function App() {
   const [loading, setLoading] = useState(true);
@@ -37,6 +41,9 @@ export default function App() {
     <Routes>
       <Route element={<PublicLayout />}>
         <Route path="/" element={<PublicHome />} />
+        <Route path="/build-your-own" element={<BuildYourOwn />} />
+        <Route path="/your-breakfast" element={<YourBreakfast />} />
+
         <Route path="/menu/:categoryId" element={<PublicSubcategories />} />
         <Route
           path="/menu/:categoryId/:subcategoryId"
@@ -44,6 +51,7 @@ export default function App() {
         />
       </Route>
       <Route path="/admin/login" element={<AdminLogin />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route element={<AdminLayout />}>
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
@@ -57,6 +65,8 @@ export default function App() {
           element={<AdminSubcategories />}
         />
       </Route>
+
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }
